@@ -14,8 +14,10 @@ from priority_rules import PRIORITY_RULES, get_priority_fn
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
 from validate import validate_schedule
 from justification import justify
+from time_window_pruning import time_window_prunable
 
 JUSTIFY = False
+PRUNE_MODES = False
 
 
 def _run_combo(project, sgs_name, pr_name, mr_name):
@@ -72,24 +74,37 @@ def run_best(filepath: str):
     return project, best_schedule, best_combo
 
 
-def _param_contents(project, schedule, best_combo, source_path):
+def _param_contents(project, schedule, best_combo, source_path, kept_modes=None):
     """Build Essence Prime .param contents for one instance.
 
     The schedule is the best feasible heuristic solution found; the horizon
     is set to makespan - 1 so a solver re-using this param must improve on
     it. Solution start/mode assignments are embedded as $-comments (1-based
-    indexing to match the rest of the param file)."""
+    indexing to match the rest of the param file).
+
+    If kept_modes is provided, it is a list (per activity) of original mode
+    indices to retain (in original order). Pruned modes are dropped and
+    surviving modes are renumbered 1..k in the output."""
     n = project.num_activities
     ms = schedule.compute_makespan(project)
     sgs_name, pr_name, mr_name = best_combo
+
+    if kept_modes is None:
+        kept_modes = [list(range(len(act.modes))) for act in project.activities]
+    remap = [{orig: new for new, orig in enumerate(keeps)} for keeps in kept_modes]
+    total_pruned = sum(len(act.modes) - len(k) for act, k in zip(project.activities, kept_modes))
 
     lines = ["language ESSENCE' 1.0"]
     lines.append(f"$ Generated from file {source_path}")
     lines.append(f"$ Best heuristic solution: makespan = {ms}, "
                  f"combo = {sgs_name}/{pr_name}/{mr_name}")
+    if total_pruned:
+        lines.append(f"$ Pruned {total_pruned} mode(s) by time-window test "
+                     f"(horizon = {ms})")
     lines.append("$ activity,mode,start (1-based indexing)")
     for i in range(n):
-        m = schedule.mode_assignments[i] + 1
+        orig_m = schedule.mode_assignments[i]
+        m = remap[i][orig_m] + 1
         s = schedule.start_times[i]
         lines.append(f"$ {i + 1},{m},{s}")
 
@@ -101,12 +116,14 @@ def _param_contents(project, schedule, best_combo, source_path):
     succs = [[s + 1 for s in project.activities[i].successors] for i in range(n)]
     lines.append(f"letting successors = {succs}")
 
-    durs = [[m.duration for m in project.activities[i].modes] for i in range(n)]
+    durs = [[project.activities[i].modes[m].duration for m in kept_modes[i]]
+            for i in range(n)]
     lines.append(f"letting durations = {durs}")
 
     usage = [
-        [list(m.renewable_demands) + list(m.nonrenewable_demands)
-         for m in project.activities[i].modes]
+        [list(project.activities[i].modes[m].renewable_demands)
+         + list(project.activities[i].modes[m].nonrenewable_demands)
+         for m in kept_modes[i]]
         for i in range(n)
     ]
     lines.append(f"letting resourceUsage = {usage}")
@@ -119,16 +136,25 @@ def _param_contents(project, schedule, best_combo, source_path):
 
 def _gen_param_worker(filepath: str) -> tuple[str, int | None, str]:
     """Pool worker: run all combos, write <filepath>.param. Returns
-    (filepath, makespan_or_None, status)."""
+    (filepath, makespan_or_None, status). If PRUNE_MODES is set, drop modes
+    that the time-window test (horizon = best makespan) proves infeasible."""
     try:
         project, schedule, combo = run_best(filepath)
     except Exception as e:
         return (filepath, None, f"ERROR: {e}")
     if schedule is None:
         return (filepath, None, "no feasible solution")
+    kept_modes = None
+    if PRUNE_MODES:
+        ms = schedule.compute_makespan(project)
+        prunable = time_window_prunable(project, ms)
+        kept_modes = [
+            [i for i in range(len(act.modes)) if i not in set(prunable[j])]
+            for j, act in enumerate(project.activities)
+        ]
     out_path = filepath + ".param"
     with open(out_path, "w") as f:
-        f.write(_param_contents(project, schedule, combo, filepath))
+        f.write(_param_contents(project, schedule, combo, filepath, kept_modes))
     return (filepath, schedule.compute_makespan(project), "OK")
 
 
@@ -158,6 +184,76 @@ def generate_param(path: str, workers: int = None):
     for fp, _, status in results:
         if status != "OK":
             print(f"  {os.path.basename(fp)}: {status}")
+
+
+def _load_ub_per_instance(results_csv: str) -> dict[str, int]:
+    """Read benchmark_results.csv and return {instance: min_makespan}."""
+    ubs: dict[str, int] = {}
+    with open(results_csv) as f:
+        r = csv.reader(f)
+        next(r)  # header
+        for row in r:
+            inst, _, _, _, ms = row
+            if not ms:
+                continue
+            ms_int = int(ms)
+            cur = ubs.get(inst)
+            if cur is None or ms_int < cur:
+                ubs[inst] = ms_int
+    return ubs
+
+
+def _twp_worker(args):
+    filepath, ub = args
+    project = parse_psplib(filepath)
+    pruned = time_window_prunable(project, ub)
+    total = sum(len(act.modes) for act in project.activities)
+    n_pruned = sum(len(r) for r in pruned)
+    return os.path.basename(filepath), total, n_pruned, pruned, ub
+
+
+def scan_time_window(directory: str, results_csv: str, workers: int = None):
+    """Scan instances, prune modes by time-window test using UB from CSV."""
+    files = sorted(glob.glob(os.path.join(directory, "*.mm")))
+    if not files:
+        print(f"No .mm files found in {directory}")
+        return
+    ubs = _load_ub_per_instance(results_csv)
+    missing = [f for f in files if os.path.basename(f) not in ubs]
+    if missing:
+        print(f"Warning: {len(missing)} instances have no UB in {results_csv}; skipping")
+        files = [f for f in files if os.path.basename(f) in ubs]
+
+    if workers is None:
+        workers = max(1, (os.cpu_count() or 1) - 1)
+
+    args = [(f, ubs[os.path.basename(f)]) for f in files]
+    t0 = time.time()
+    if len(args) == 1:
+        results = [_twp_worker(args[0])]
+    else:
+        with multiprocessing.Pool(workers) as pool:
+            results = pool.map(_twp_worker, args)
+    elapsed = time.time() - t0
+
+    total_modes = sum(t for _, t, _, _, _ in results)
+    total_pruned = sum(p for _, _, p, _, _ in results)
+    hits = [(name, p, total, pr, ub)
+            for name, total, p, pr, ub in results if p > 0]
+
+    print(f"Scanned {len(files)} instances in {elapsed:.2f}s")
+    print(f"Instances with prunable modes: "
+          f"{len(hits)}/{len(files)} "
+          f"({100.0 * len(hits) / len(files):.1f}%)")
+    print(f"Removable mode entries: {total_pruned}/{total_modes} "
+          f"({100.0 * total_pruned / total_modes:.2f}% of all task-mode pairs)")
+    print()
+    if hits:
+        print(f"{'Instance':<20} {'UB':>4} {'Pruned':>6} {'Total':>6}  Per-activity (act:[modes])")
+        print("-" * 75)
+        for name, p, total, pr, ub in hits:
+            per_act = ", ".join(f"{i}:{r}" for i, r in enumerate(pr) if r)
+            print(f"{name:<20} {ub:>4} {p:>6} {total:>6}  {per_act}")
 
 
 def _run_instance(filepath: str) -> tuple[str, dict[tuple, int | None]]:
@@ -240,12 +336,18 @@ if __name__ == "__main__":
         print("  python main.py --benchmark <directory> [--workers N]  # run on all instances")
         print("  python main.py --param <instance.mm>      # write Essence Prime .param file")
         print("  python main.py --param <directory> [--workers N]     # batch .param generation")
+        print("  python main.py --prune-modes <directory> <results.csv> [--workers N] # report time-window-prunable modes")
         print("  Add --justify to any command to enable double justification")
+        print("  Add --prune-modes to --param to drop time-window-infeasible modes from output")
         sys.exit(1)
 
     if "--justify" in sys.argv:
         JUSTIFY = True
         sys.argv = [a for a in sys.argv if a != "--justify"]
+
+    if sys.argv[1] != "--prune-modes" and "--prune-modes" in sys.argv:
+        PRUNE_MODES = True
+        sys.argv = [a for a in sys.argv if a != "--prune-modes"]
 
     if sys.argv[1] == "--benchmark" and len(sys.argv) >= 3:
         directory = sys.argv[2]
@@ -261,6 +363,14 @@ if __name__ == "__main__":
             if arg == "--workers" and i + 1 < len(sys.argv):
                 workers = int(sys.argv[i + 1])
         generate_param(path, workers=workers)
+    elif sys.argv[1] == "--prune-modes" and len(sys.argv) >= 4:
+        directory = sys.argv[2]
+        results_csv = sys.argv[3]
+        workers = None
+        for i, arg in enumerate(sys.argv):
+            if arg == "--workers" and i + 1 < len(sys.argv):
+                workers = int(sys.argv[i + 1])
+        scan_time_window(directory, results_csv, workers=workers)
     elif sys.argv[1] == "--best" and len(sys.argv) >= 3:
         filepath = sys.argv[2]
         project, schedule, combo = run_best(filepath)
