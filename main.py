@@ -14,7 +14,7 @@ from priority_rules import PRIORITY_RULES, get_priority_fn
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
 from validate import validate_schedule
 from justification import justify
-from time_window_pruning import time_window_prunable
+from time_window_pruning import time_window_prunable, top_k_longest_paths
 
 JUSTIFY = False
 PRUNE_MODES = False
@@ -74,7 +74,8 @@ def run_best(filepath: str):
     return project, best_schedule, best_combo
 
 
-def _param_contents(project, schedule, best_combo, source_path, kept_modes=None):
+def _param_contents(project, schedule, best_combo, source_path,
+                    kept_modes=None, near_critical_paths=None):
     """Build Essence Prime .param contents for one instance.
 
     The schedule is the best feasible heuristic solution found; the horizon
@@ -131,6 +132,12 @@ def _param_contents(project, schedule, best_combo, source_path, kept_modes=None)
     caps = list(project.renewable_capacities) + list(project.nonrenewable_capacities)
     lines.append(f"letting resourceLimits = {caps}")
 
+    if near_critical_paths is not None:
+        lengths = [length for length, _ in near_critical_paths]
+        lines.append(f"$ Near-critical path lengths (shortest-mode sums): {lengths}")
+        paths_1based = [[j + 1 for j in path] for _, path in near_critical_paths]
+        lines.append(f"letting nearCriticalPaths = {paths_1based}")
+
     return "\n".join(lines) + "\n"
 
 
@@ -145,6 +152,7 @@ def _gen_param_worker(filepath: str) -> tuple[str, int | None, str]:
     if schedule is None:
         return (filepath, None, "no feasible solution")
     kept_modes = None
+    near_critical_paths = None
     if PRUNE_MODES:
         ms = schedule.compute_makespan(project)
         prunable = time_window_prunable(project, ms)
@@ -152,9 +160,12 @@ def _gen_param_worker(filepath: str) -> tuple[str, int | None, str]:
             [i for i in range(len(act.modes)) if i not in set(prunable[j])]
             for j, act in enumerate(project.activities)
         ]
+        shortest = [min(m.duration for m in act.modes) for act in project.activities]
+        near_critical_paths = top_k_longest_paths(project, shortest, 5)
     out_path = filepath + ".param"
     with open(out_path, "w") as f:
-        f.write(_param_contents(project, schedule, combo, filepath, kept_modes))
+        f.write(_param_contents(project, schedule, combo, filepath,
+                                kept_modes, near_critical_paths))
     return (filepath, schedule.compute_makespan(project), "OK")
 
 
