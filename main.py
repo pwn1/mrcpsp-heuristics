@@ -15,6 +15,7 @@ from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
 from validate import validate_schedule
 from justification import justify
 from time_window_pruning import time_window_prunable, top_k_longest_paths
+from lower_bounds import compute_lower_bound
 
 JUSTIFY = False
 PRUNE_MODES = False
@@ -88,6 +89,8 @@ def _param_contents(project, schedule, best_combo, source_path,
     surviving modes are renumbered 1..k in the output."""
     n = project.num_activities
     ms = schedule.compute_makespan(project)
+    lb = compute_lower_bound(project)
+    assert lb <= ms, f"unsound LB: lb={lb} > heuristic UB={ms}"
     sgs_name, pr_name, mr_name = best_combo
 
     if kept_modes is None:
@@ -110,6 +113,7 @@ def _param_contents(project, schedule, best_combo, source_path,
         lines.append(f"$ {i + 1},{m},{s}")
 
     lines.append(f"letting jobs = {n}")
+    lines.append(f"letting lowerBound = {lb}")
     lines.append(f"letting horizon = {ms - 1}")
     lines.append(f"letting resourcesRenew = {project.num_renewable}")
     lines.append(f"letting resourcesNonrenew = {project.num_nonrenewable}")
@@ -267,6 +271,97 @@ def scan_time_window(directory: str, results_csv: str, workers: int = None):
             print(f"{name:<20} {ub:>4} {p:>6} {total:>6}  {per_act}")
 
 
+def check_lower_bounds(directory: str,
+                       best_known_csv: str = "data/mmlib50_best_known.csv",
+                       output_csv: str = "data/lb_check.csv"):
+    """Compute compute_lower_bound on every .mm in directory, validate
+    soundness against published lower bounds and best-known makespans, and
+    report the quality distribution."""
+    from lower_bounds import compute_lower_bound, critical_path_lb, resource_workload_lb
+
+    files = sorted(glob.glob(os.path.join(directory, "*.mm")))
+    if not files:
+        print(f"No .mm files found in {directory}")
+        return
+
+    published = {}
+    with open(best_known_csv) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            published[row["instance"]] = (int(row["lower_bound"]),
+                                          int(row["best_known"]))
+
+    rows = []
+    violations = []
+    beats_pub_lb = []
+    cp_binding = wl_binding = tied = 0
+    t0 = time.time()
+    for fp in files:
+        name = os.path.basename(fp)
+        project = parse_psplib(fp)
+        lb0 = critical_path_lb(project)
+        lb1 = resource_workload_lb(project)
+        lb = max(lb0, lb1)
+        if lb1 > lb0:
+            wl_binding += 1
+        elif lb0 > lb1:
+            cp_binding += 1
+        else:
+            tied += 1
+        pub_lb, pub_bk = published.get(name, (None, None))
+        rows.append((name, lb0, lb1, lb, pub_lb, pub_bk))
+        if pub_bk is not None and lb > pub_bk:
+            violations.append((name, lb, pub_bk))
+        if pub_lb is not None and lb > pub_lb:
+            beats_pub_lb.append((name, lb, pub_lb))
+    elapsed = time.time() - t0
+
+    with open(output_csv, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["instance", "lb0_critical_path", "lb1_workload",
+                    "lb_combined", "published_lb", "published_best_known"])
+        for r in rows:
+            w.writerow(r)
+
+    print(f"Computed LB for {len(files)} instances in {elapsed:.2f}s "
+          f"-> {output_csv}")
+    print(f"Binding bound: LB0(critical path) on {cp_binding}, "
+          f"LB1(workload) on {wl_binding}, tied on {tied}")
+
+    if violations:
+        print(f"\nSOUNDNESS VIOLATIONS vs best-known UB ({len(violations)}):")
+        for name, lb, ref in violations[:20]:
+            print(f"  {name}: lb={lb} > best_known={ref}")
+        sys.exit(1)
+    print("Soundness: 0 violations against best-known UB.")
+
+    matched = [r for r in rows if r[4] is not None]
+    if matched:
+        gaps_lb = sorted(r[4] - r[3] for r in matched)
+        gaps_bk = sorted(r[5] - r[3] for r in matched)
+        equal_to_pub = sum(1 for g in gaps_lb if g == 0)
+        weaker = sum(1 for g in gaps_lb if g > 0)
+        tighter = sum(1 for g in gaps_lb if g < 0)
+        n = len(gaps_lb)
+
+        def stats(xs):
+            return (sum(xs) / n, xs[n // 2], xs[int(0.9 * n)], xs[-1])
+
+        m_lb, med_lb, p90_lb, max_lb = stats(gaps_lb)
+        m_bk, med_bk, p90_bk, max_bk = stats(gaps_bk)
+        print(f"\nQuality vs published LB ({n} instances):")
+        print(f"  our_lb == published: {equal_to_pub} "
+              f"({100.0 * equal_to_pub / n:.1f}%)")
+        print(f"  our_lb >  published: {tighter} "
+              f"({100.0 * tighter / n:.1f}%)  (we beat the literature LB)")
+        print(f"  our_lb <  published: {weaker} "
+              f"({100.0 * weaker / n:.1f}%)  (literature LB tighter)")
+        print(f"  gap (published_lb - our_lb): "
+              f"mean={m_lb:+.2f}, median={med_lb:+d}, p90={p90_lb:+d}, max={max_lb:+d}")
+        print(f"  gap (best_known - our_lb):   "
+              f"mean={m_bk:.2f}, median={med_bk}, p90={p90_bk}, max={max_bk}")
+
+
 def _run_instance(filepath: str) -> tuple[str, dict[tuple, int | None]]:
     """Run all heuristic combinations on one instance. Returns
     (filename, {(sgs, priority, mode): makespan_or_None})."""
@@ -348,6 +443,7 @@ if __name__ == "__main__":
         print("  python main.py --param <instance.mm>      # write Essence Prime .param file")
         print("  python main.py --param <directory> [--workers N]     # batch .param generation")
         print("  python main.py --prune-modes <directory> <results.csv> [--workers N] # report time-window-prunable modes")
+        print("  python main.py --check-lb <directory>     # validate LB soundness and report quality")
         print("  Add --justify to any command to enable double justification")
         print("  Add --prune-modes to --param to drop time-window-infeasible modes from output")
         sys.exit(1)
@@ -382,6 +478,8 @@ if __name__ == "__main__":
             if arg == "--workers" and i + 1 < len(sys.argv):
                 workers = int(sys.argv[i + 1])
         scan_time_window(directory, results_csv, workers=workers)
+    elif sys.argv[1] == "--check-lb" and len(sys.argv) >= 3:
+        check_lower_bounds(sys.argv[2])
     elif sys.argv[1] == "--best" and len(sys.argv) >= 3:
         filepath = sys.argv[2]
         project, schedule, combo = run_best(filepath)

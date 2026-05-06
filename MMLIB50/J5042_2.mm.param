@@ -56,6 +56,7 @@ $ 50,1,22
 $ 51,1,17
 $ 52,1,29
 letting jobs = 52
+letting lowerBound = 25
 letting horizon = 28
 letting resourcesRenew = 2
 letting resourcesNonrenew = 2

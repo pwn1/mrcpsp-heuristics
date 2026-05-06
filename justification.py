@@ -1,13 +1,23 @@
 from __future__ import annotations
-"""Double justification (iterative forward-backward improvement).
+"""Iterated double justification, adapted from Valls et al. (2005) to MRCPSP.
 
 Reference: Valls, Ballestin & Quintanilla (2005), "Justification and RCPSP:
 a technique that pays", EJOR 165(2):375-386.
 
-Given a feasible schedule (fixed mode assignments), iteratively right-justify
-(push each activity as late as possible) and left-justify (push each as early
-as possible), until no start time changes. Mode assignments are never changed,
-so NR feasibility is preserved.
+Pass orderings follow the operational specification on page 383: right-justify
+processes activities in decreasing order of finish time and pushes each to its
+latest feasible start; left-justify processes in increasing order of start time
+and pushes each to its earliest feasible start.
+
+Three departures from the paper:
+- The paper's DJ is one right pass followed by one left pass (page 378). This
+  implementation iterates R+L until no start time changes (up to max_iter),
+  which is at least as strong but not what the paper calls DJ.
+- The dummy source/sink are not skipped (the paper formally excludes them on
+  page 377). With duration 0 they carry no resource and are pinned by lb/ub,
+  so behaviorally inert.
+- Mode assignments are held fixed throughout. The paper is single-mode RCPSP;
+  freezing modes is a standard MRCPSP adaptation that preserves NR feasibility.
 """
 
 from mrcpsp import Project, Schedule
@@ -61,7 +71,7 @@ def _earliest_feasible_start(profile, caps, duration, demands, lb: int) -> int:
 
 
 def justify(project: Project, schedule: Schedule,
-            max_iter: int = 10) -> Schedule:
+            max_iter: int = 100) -> Schedule:
     """Iterative right/left justification. Returns a new Schedule whose
     makespan is <= schedule.compute_makespan(project)."""
     n = project.num_activities
