@@ -71,7 +71,7 @@ def _earliest_feasible_start(profile, caps, duration, demands, lb: int) -> int:
 
 
 def justify(project: Project, schedule: Schedule,
-            max_iter: int = 100) -> Schedule:
+            max_iter: int = 10) -> Schedule:
     """Iterative right/left justification. Returns a new Schedule whose
     makespan is <= schedule.compute_makespan(project)."""
     n = project.num_activities
