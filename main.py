@@ -16,9 +16,14 @@ from validate import validate_schedule
 from justification import justify
 from time_window_pruning import time_window_prunable, top_k_longest_paths
 from lower_bounds import compute_lower_bound
+from local_search import local_search
 
 JUSTIFY = False
 PRUNE_MODES = False
+LOCAL_SEARCH = False
+LS_TIME_BUDGET = 30.0
+LS_ITERATIONS = None
+LS_SEED = 42
 
 
 def _run_combo(project, sgs_name, pr_name, mr_name):
@@ -60,7 +65,9 @@ def run_all_combinations(filepath: str):
 
 
 def run_best(filepath: str):
-    """Run all heuristic combinations on one instance, return the best valid schedule."""
+    """Run all heuristic combinations on one instance, return the best valid
+    schedule. If LOCAL_SEARCH is set, post-process the best schedule with the
+    local search component (driven by LS_TIME_BUDGET or LS_ITERATIONS)."""
     project = parse_psplib(filepath)
     best_ms, best_schedule, best_combo = None, None, None
 
@@ -71,6 +78,16 @@ def run_best(filepath: str):
         ms = schedule.compute_makespan(project)
         if best_ms is None or ms < best_ms:
             best_ms, best_schedule, best_combo = ms, schedule, combo
+
+    if best_schedule is not None and LOCAL_SEARCH:
+        if LS_ITERATIONS is not None:
+            best_schedule, _ = local_search(project, best_schedule,
+                                            iterations=LS_ITERATIONS,
+                                            seed=LS_SEED)
+        else:
+            best_schedule, _ = local_search(project, best_schedule,
+                                            time_budget=LS_TIME_BUDGET,
+                                            seed=LS_SEED)
 
     return project, best_schedule, best_combo
 
@@ -446,6 +463,10 @@ if __name__ == "__main__":
         print("  python main.py --check-lb <directory>     # validate LB soundness and report quality")
         print("  Add --justify to any command to enable double justification")
         print("  Add --prune-modes to --param to drop time-window-infeasible modes from output")
+        print("  Add --local-search to any command using the best constructive schedule")
+        print("    (--best, --param). Default budget 30s/instance; override with")
+        print("    --local-search-iter=N (deterministic) or --local-search-time=S.")
+        print("    --ls-seed=N sets the LS RNG seed (default 42).")
         sys.exit(1)
 
     if "--justify" in sys.argv:
@@ -455,6 +476,22 @@ if __name__ == "__main__":
     if sys.argv[1] != "--prune-modes" and "--prune-modes" in sys.argv:
         PRUNE_MODES = True
         sys.argv = [a for a in sys.argv if a != "--prune-modes"]
+
+    if "--local-search" in sys.argv:
+        LOCAL_SEARCH = True
+        sys.argv = [a for a in sys.argv if a != "--local-search"]
+
+    _kept = []
+    for a in sys.argv:
+        if a.startswith("--local-search-iter="):
+            LS_ITERATIONS = int(a.split("=", 1)[1])
+        elif a.startswith("--local-search-time="):
+            LS_TIME_BUDGET = float(a.split("=", 1)[1])
+        elif a.startswith("--ls-seed="):
+            LS_SEED = int(a.split("=", 1)[1])
+        else:
+            _kept.append(a)
+    sys.argv = _kept
 
     if sys.argv[1] == "--benchmark" and len(sys.argv) >= 3:
         directory = sys.argv[2]
