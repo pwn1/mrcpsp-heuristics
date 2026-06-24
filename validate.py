@@ -20,8 +20,7 @@ class ScheduleValidator:
             *self._check_nonrenewable_resource_constraints(schedule)
         ]
 
-    @staticmethod
-    def _check_nonrenewable_resource_constraints(schedule: Schedule) -> list[str]:
+    def _check_nonrenewable_resource_constraints(self, schedule: Schedule) -> list[str]:
         project = schedule.project
 
         # Check non-renewable resource constraints
@@ -30,21 +29,23 @@ class ScheduleValidator:
             for activity in schedule.scheduled_activities
         ]
 
-        usage = [
-            int(sum(nonrenewable_quotas)) for nonrenewable_quotas in zip(
-                *activity_nonrenewable_demands, [0] * project.num_renewable
-            )
-        ]
+        usage = self._sum_quotas_helper(activity_nonrenewable_demands, project.num_nonrenewable)
 
         return [
             f"Non-renewable resource {nr} exceeded: "
             f"total {usage[nr]} > capacity {project.nonrenewable_capacities[nr]}"
-            for nr in range(project.num_renewable) if usage[nr] > project.nonrenewable_capacities[nr]
+            for nr in range(project.num_nonrenewable) if usage[nr] > project.nonrenewable_capacities[nr]
         ]
 
-
     @staticmethod
-    def _check_renewable_resource_constraints(schedule: Schedule) -> list[str]:
+    def _sum_quotas_helper(quota_list: list[list[int]], default_size:int) -> list[int]:
+        return [
+            int(sum(quotas)) for quotas in zip(
+                *quota_list, [0]*default_size
+            )
+        ]
+
+    def _check_renewable_resource_constraints(self, schedule: Schedule) -> list[str]:
         errors = []
         project = schedule.project
 
@@ -57,11 +58,7 @@ class ScheduleValidator:
                 activity.start_time <= timeslot < activity.end_time
             ]
 
-            usage = [
-                int(sum(renewable_quotas)) for renewable_quotas in zip(
-                    *active_activities_renewable_demands, [0] * project.num_renewable
-                )
-            ]
+            usage = self._sum_quotas_helper(active_activities_renewable_demands, project.num_renewable)
 
             timeslot_renewable_errors = [
                     f"Renewable resource {r} exceeded at time {timeslot}: "

@@ -1,11 +1,11 @@
 from mrcpsp import Project, Mode, Activity, Schedule
 from validate import validate_schedule
 
-SOURCE_SINK_MODE = [Mode(duration=0, renewable_demands=[0, 0], nonrenewable_demands=[0, 0])]
+SOURCE_SINK_MODE = [Mode(duration=0, renewable_demands=[0, 0, 0], nonrenewable_demands=[0, 0])]
 ACTIVITY_MODES = [
-    Mode(duration=1, renewable_demands=[1, 1], nonrenewable_demands=[0, 0]),
-    Mode(duration=2, renewable_demands=[0, 1], nonrenewable_demands=[0, 1]),
-    Mode(duration=2, renewable_demands=[1, 0], nonrenewable_demands=[1, 0]),
+    Mode(duration=1, renewable_demands=[1, 1, 0], nonrenewable_demands=[0, 0]),
+    Mode(duration=2, renewable_demands=[0, 1, 0], nonrenewable_demands=[0, 1]),
+    Mode(duration=2, renewable_demands=[1, 0, 0], nonrenewable_demands=[1, 0]),
 ]
 ACTIVITIES = [
     Activity(id=0, modes=SOURCE_SINK_MODE, successors=[1]),
@@ -16,9 +16,9 @@ ACTIVITIES = [
 ]
 PROJECT = Project(
             num_activities=5,
-            num_renewable=2,
+            num_renewable=3,
             num_nonrenewable=2,
-            renewable_capacities=[1,1],
+            renewable_capacities=[1,1,0],
             nonrenewable_capacities=[1,1],
             activities=ACTIVITIES,
         )
