@@ -12,7 +12,7 @@ from mm_parser import parse_psplib
 from sgs import SGS_SCHEMES
 from priority_rules import PRIORITY_RULES, get_priority_fn
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
-from validate import ScheduleValidator
+from validation import ScheduleValidator
 from justification import justify
 from time_window_pruning import time_window_prunable, top_k_longest_paths
 from lower_bounds import compute_lower_bound

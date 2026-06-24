@@ -1,5 +1,3 @@
-# from mrcpsp import Project, Mode, Activity, Schedule
-# from validate import ScheduleValidator
 from mrcpsp import *
 from validation import ScheduleValidator
 
