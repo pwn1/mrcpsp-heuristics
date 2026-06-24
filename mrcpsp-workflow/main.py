@@ -294,7 +294,7 @@ def check_lower_bounds(directory: str,
     """Compute compute_lower_bound on every .mm in directory, validate
     soundness against published lower bounds and best-known makespans, and
     report the quality distribution."""
-    from lower_bounds import compute_lower_bound, critical_path_lb, resource_workload_lb
+    from lower_bounds import critical_path_lb, resource_workload_lb
 
     files = sorted(glob.glob(os.path.join(directory, "*.mm")))
     if not files:
@@ -424,7 +424,7 @@ def run_benchmark(directory: str, workers: int = None):
     elapsed = time.time() - t0
 
     _save_instance_results(all_results,
-                           os.path.join(directory, "..", "benchmark_results.csv"))
+                           os.path.join(directory, "../..", "benchmark_results.csv"))
 
     # Aggregate: (sgs, priority, mode) -> list of makespans (one per instance)
     combo_keys = list(all_results[0][1].keys())

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-"""Schedule validation for MRCPSP."""
+"""Schedule validations for MRCPSP."""
 
-from mrcpsp import Schedule
-
+from mrcpsp import *
 
 class ScheduleValidator:
     def validate(self, schedule: Schedule) -> list[str]:

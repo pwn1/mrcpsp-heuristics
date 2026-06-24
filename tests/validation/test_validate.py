@@ -1,5 +1,7 @@
-from mrcpsp import Project, Mode, Activity, Schedule
-from validate import ScheduleValidator
+# from mrcpsp import Project, Mode, Activity, Schedule
+# from validate import ScheduleValidator
+from mrcpsp import *
+from validation import ScheduleValidator
 
 SOURCE_SINK_MODE = [Mode(duration=0, renewable_demands=[0, 0, 0], nonrenewable_demands=[0, 0])]
 ACTIVITY_MODES = [
