@@ -131,4 +131,4 @@ def justify(project: Project, schedule: Schedule,
         if not changed:
             break
 
-    return Schedule(mode_assignments=modes, start_times=start_times)
+    return Schedule(mode_assignments=modes, start_times=start_times, project=project)

@@ -52,17 +52,43 @@ class Project:
         # (unlike str/bytes hashing, which is salted by PYTHONHASHSEED).
         return hash(tuple(parts)) & 0xFFFFFFFF
 
+@dataclass
+class ScheduledActivity(Activity):
+    start_time: int
+    end_time: int
+    selected_mode: Mode
 
 @dataclass
 class Schedule:
     """A complete schedule: mode assignment and start time for each activity."""
+    project:Project
     mode_assignments: list[int]   # mode index for each activity
     start_times: list[int]        # start time for each activity
 
-    def compute_makespan(self, project: Project) -> int:
+    @property
+    def scheduled_activities(self) -> list[ScheduledActivity]:
+        scheduled_activities = []
+        for activity_index in range(self.project.num_activities):
+            activity = self.project.activities[activity_index]
+            selected_mode = activity.modes[self.mode_assignments[activity_index]]
+
+            start_time = self.start_times[activity_index]
+            end_time = start_time + selected_mode.duration
+            scheduled_activities.append(ScheduledActivity(
+                id=activity.id,
+                modes = activity.modes,
+                successors = activity.successors,
+                start_time=start_time,
+                end_time=end_time,
+                selected_mode=selected_mode,
+            ))
+
+        return scheduled_activities
+
+    def compute_makespan(self) -> int:
         """Compute makespan as the maximum finish time across all activities."""
         max_finish = 0
-        for act in project.activities:
+        for act in self.project.activities:
             mode = act.modes[self.mode_assignments[act.id]]
             finish = self.start_times[act.id] + mode.duration
             if finish > max_finish:
