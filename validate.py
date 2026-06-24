@@ -20,30 +20,37 @@ class ScheduleValidator:
             *self._check_nonrenewable_resource_constraints(schedule)
         ]
 
-    def _check_nonrenewable_resource_constraints(self, schedule: Schedule) -> list[str]:
+    @staticmethod
+    def _check_modes_are_valid(schedule: Schedule) -> list[str]:
+        # Check mode assignments are valid indices
+        errors = []
         project = schedule.project
+        for activity_index in range(project.num_activities):
+            activity = project.activities[activity_index]
+            mode_assignment = schedule.mode_assignments[activity_index]
+            valid_assignment = 0<=mode_assignment < len(activity.modes)
 
-        # Check non-renewable resource constraints
-        activity_nonrenewable_demands = [
-            activity.selected_mode.nonrenewable_demands
-            for activity in schedule.scheduled_activities
-        ]
+            if not valid_assignment:
+                errors.append(f"Activity {activity.id}: invalid mode {mode_assignment}")
 
-        usage = self._sum_quotas_helper(activity_nonrenewable_demands, project.num_nonrenewable)
-
-        return [
-            f"Non-renewable resource {nr} exceeded: "
-            f"total {usage[nr]} > capacity {project.nonrenewable_capacities[nr]}"
-            for nr in range(project.num_nonrenewable) if usage[nr] > project.nonrenewable_capacities[nr]
-        ]
+        return errors
 
     @staticmethod
-    def _sum_quotas_helper(quota_list: list[list[int]], default_size:int) -> list[int]:
-        return [
-            int(sum(quotas)) for quotas in zip(
-                *quota_list, [0]*default_size
-            )
-        ]
+    def _check_precedence_constraints(schedule: Schedule) -> list[str]:
+        # Check precedence constraints
+        errors = []
+        scheduled_activities = schedule.scheduled_activities
+
+        for activity in scheduled_activities:
+            successors = [scheduled_activities[index] for index in activity.successors]
+            for successor in successors:
+                if activity.end_time > successor.start_time:
+                    errors.append(
+                        f"Precedence violation: activity {activity.id} finishes at {activity.end_time} "
+                        f"but successor {successor.id} starts at {successor.start_time}"
+                    )
+
+        return errors
 
     def _check_renewable_resource_constraints(self, schedule: Schedule) -> list[str]:
         errors = []
@@ -70,38 +77,30 @@ class ScheduleValidator:
 
         return errors
 
-    @staticmethod
-    def _check_precedence_constraints(schedule: Schedule) -> list[str]:
-        # Check precedence constraints
-        errors = []
-        scheduled_activities = schedule.scheduled_activities
-
-        for activity in scheduled_activities:
-            successors = [scheduled_activities[index] for index in activity.successors]
-            for successor in successors:
-                if activity.end_time > successor.start_time:
-                    errors.append(
-                        f"Precedence violation: activity {activity.id} finishes at {activity.end_time} "
-                        f"but successor {successor.id} starts at {successor.start_time}"
-                    )
-
-        return errors
-
-    @staticmethod
-    def _check_modes_are_valid(schedule: Schedule) -> list[str]:
-        # Check mode assignments are valid indices
-        errors = []
+    def _check_nonrenewable_resource_constraints(self, schedule: Schedule) -> list[str]:
         project = schedule.project
-        for activity_index in range(project.num_activities):
-            activity = project.activities[activity_index]
-            mode_assignment = schedule.mode_assignments[activity_index]
-            valid_assignment = 0<=mode_assignment < len(activity.modes)
 
-            if not valid_assignment:
-                errors.append(f"Activity {activity.id}: invalid mode {mode_assignment}")
+        # Check non-renewable resource constraints
+        activity_nonrenewable_demands = [
+            activity.selected_mode.nonrenewable_demands
+            for activity in schedule.scheduled_activities
+        ]
 
-        return errors
+        usage = self._sum_quotas_helper(activity_nonrenewable_demands, project.num_nonrenewable)
 
+        return [
+            f"Non-renewable resource {nr} exceeded: "
+            f"total {usage[nr]} > capacity {project.nonrenewable_capacities[nr]}"
+            for nr in range(project.num_nonrenewable) if usage[nr] > project.nonrenewable_capacities[nr]
+        ]
+
+    @staticmethod
+    def _sum_quotas_helper(quota_list: list[list[int]], default_size:int) -> list[int]:
+        return [
+            int(sum(quotas)) for quotas in zip(
+                *quota_list, [0]*default_size
+            )
+        ]
 
 def validate_schedule(project: Project, schedule: Schedule) -> list[str]:
     """Validate a schedule against all MRCPSP constraints.
