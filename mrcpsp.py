@@ -56,6 +56,7 @@ class Project:
 @dataclass
 class Schedule:
     """A complete schedule: mode assignment and start time for each activity."""
+    project:Project
     mode_assignments: list[int]   # mode index for each activity
     start_times: list[int]        # start time for each activity
 

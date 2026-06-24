@@ -172,7 +172,7 @@ def _serial_schedule(project: Project, priorities, mode_assignments,
             if remaining[s] == 0:
                 ready.append(s)
 
-    return Schedule(mode_assignments=list(mode_assignments), start_times=start_times)
+    return Schedule(mode_assignments=list(mode_assignments), start_times=start_times, project=project)
 
 
 def _parallel_schedule(project: Project, priorities, mode_assignments,
@@ -225,7 +225,7 @@ def _parallel_schedule(project: Project, priorities, mode_assignments,
             if t >= horizon:
                 return None
 
-    return Schedule(mode_assignments=list(mode_assignments), start_times=start_times)
+    return Schedule(mode_assignments=list(mode_assignments), start_times=start_times, project=project)
 
 
 # ---------------------------------------------------------------------------
