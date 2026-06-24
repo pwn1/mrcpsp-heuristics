@@ -10,7 +10,6 @@ from mm_parser import parse_psplib
 from sgs import SGS_SCHEMES
 from priority_rules import PRIORITY_RULES, get_priority_fn
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
-from validate import validate_schedule
 
 
 def load_best_known(path="data/mmlib50_best_known.csv"):

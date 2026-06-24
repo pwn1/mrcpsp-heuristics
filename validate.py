@@ -2,12 +2,15 @@ from __future__ import annotations
 
 """Schedule validation for MRCPSP."""
 
-from mrcpsp import Project, Schedule
+from mrcpsp import Schedule
 
 
 class ScheduleValidator:
     def validate(self, schedule: Schedule) -> list[str]:
-        """Validate a MRCPSP schedule."""
+        """Validate a schedule against all MRCPSP constraints.
+
+        Returns a list of violation descriptions (empty = valid).
+        """
         invalid_mode_errors = self._check_modes_are_valid(schedule)
 
         # If modes are invalid, this will cause out of bounds errors for subsequent checks,
@@ -37,7 +40,6 @@ class ScheduleValidator:
 
     @staticmethod
     def _check_precedence_constraints(schedule: Schedule) -> list[str]:
-        # Check precedence constraints
         errors = []
         scheduled_activities = schedule.scheduled_activities
 
@@ -80,7 +82,6 @@ class ScheduleValidator:
     def _check_nonrenewable_resource_constraints(self, schedule: Schedule) -> list[str]:
         project = schedule.project
 
-        # Check non-renewable resource constraints
         activity_nonrenewable_demands = [
             activity.selected_mode.nonrenewable_demands
             for activity in schedule.scheduled_activities
@@ -101,10 +102,3 @@ class ScheduleValidator:
                 *quota_list, [0]*default_size
             )
         ]
-
-def validate_schedule(project: Project, schedule: Schedule) -> list[str]:
-    """Validate a schedule against all MRCPSP constraints.
-
-    Returns a list of violation descriptions (empty = valid).
-    """
-    return ScheduleValidator().validate(schedule)

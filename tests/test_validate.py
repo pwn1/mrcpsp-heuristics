@@ -1,5 +1,5 @@
 from mrcpsp import Project, Mode, Activity, Schedule
-from validate import validate_schedule
+from validate import ScheduleValidator
 
 SOURCE_SINK_MODE = [Mode(duration=0, renewable_demands=[0, 0, 0], nonrenewable_demands=[0, 0])]
 ACTIVITY_MODES = [
@@ -31,7 +31,7 @@ SCHEDULE = Schedule(
 class TestValidate:
     def test_valid_schedule(self):
         expected_output = []
-        assert validate_schedule(PROJECT, SCHEDULE) == expected_output
+        assert ScheduleValidator().validate(SCHEDULE) == expected_output
 
     def test_invalid_mode_indices(self):
         invalid_mode_indices_schedule = Schedule(
@@ -41,7 +41,7 @@ class TestValidate:
             project=PROJECT,
         )
         expected_output = ["Activity 0: invalid mode 1"]
-        assert validate_schedule(PROJECT, invalid_mode_indices_schedule) == expected_output
+        assert ScheduleValidator().validate(invalid_mode_indices_schedule) == expected_output
 
     def test_invalid_precedence(self):
         invalid_precedence_schedule = Schedule(
@@ -50,7 +50,7 @@ class TestValidate:
             project=PROJECT,
         )
         expected_output = ["Precedence violation: activity 0 finishes at 4 but successor 1 starts at 0"]
-        assert validate_schedule(PROJECT, invalid_precedence_schedule) == expected_output
+        assert ScheduleValidator().validate(invalid_precedence_schedule) == expected_output
 
     def test_invalid_renewable_demands(self):
         invalid_renewable_demands_schedule = Schedule(
@@ -60,7 +60,7 @@ class TestValidate:
         )
         expected_output = ["Renewable resource 0 exceeded at time 1: usage 2 > capacity 1",
                            "Renewable resource 1 exceeded at time 1: usage 2 > capacity 1"]
-        assert validate_schedule(PROJECT, invalid_renewable_demands_schedule) == expected_output
+        assert ScheduleValidator().validate(invalid_renewable_demands_schedule) == expected_output
 
     def test_invalid_nonrenewable_demands(self):
         invalid_nonrenewable_demands_schedule = Schedule(
@@ -69,4 +69,4 @@ class TestValidate:
             project=PROJECT,
         )
         expected_output = [ "Non-renewable resource 1 exceeded: total 2 > capacity 1"]
-        assert validate_schedule(PROJECT, invalid_nonrenewable_demands_schedule) == expected_output
+        assert ScheduleValidator().validate(invalid_nonrenewable_demands_schedule) == expected_output

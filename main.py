@@ -12,7 +12,7 @@ from mm_parser import parse_psplib
 from sgs import SGS_SCHEMES
 from priority_rules import PRIORITY_RULES, get_priority_fn
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
-from validate import validate_schedule
+from validate import ScheduleValidator
 from justification import justify
 from time_window_pruning import time_window_prunable, top_k_longest_paths
 from lower_bounds import compute_lower_bound
@@ -58,7 +58,7 @@ def run_all_combinations(filepath: str):
         if schedule is None:
             ms_str, status = "-", "INFEASIBLE"
         else:
-            errors = validate_schedule(project, schedule)
+            errors = ScheduleValidator().validate(schedule)
             ms_str = str(schedule.compute_makespan())
             status = f"INVALID ({len(errors)} errors)" if errors else "OK"
         print(f"{sgs_name:<10} {pr_name:<8} {mr_name:<20} {ms_str:>8}  {status}")
@@ -73,7 +73,7 @@ def run_best(filepath: str):
 
     for combo in _iter_combos():
         schedule = _run_combo(project, *combo)
-        if schedule is None or validate_schedule(project, schedule):
+        if schedule is None or ScheduleValidator().validate(schedule):
             continue
         ms = schedule.compute_makespan()
         if best_ms is None or ms < best_ms:
