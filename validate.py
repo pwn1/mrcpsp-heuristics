@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
-
 """Schedule validation for MRCPSP."""
 
-from mrcpsp import Project, Schedule, Activity
+from mrcpsp import Project, Schedule
 
 
 class ScheduleValidator:
@@ -41,26 +39,26 @@ class ScheduleValidator:
         # Iterate over each timeslot, and calculate resource usage at each point
         for timeslot in range(schedule.compute_makespan(project)):
 
-            active_activities = [
-                activity for activity in schedule.scheduled_activities if
+            active_activities_renewable_demands = [
+                activity.selected_mode.renewable_demands
+                for activity in schedule.scheduled_activities if
                 activity.start_time <= timeslot < activity.end_time
             ]
 
-            active_activities_renewable_demands = [
-                activity.selected_mode.renewable_demands for activity in active_activities
+            usage = [
+                int(sum(renewable_quotas)) for renewable_quotas in zip(
+                    *active_activities_renewable_demands, [0] * project.num_renewable
+                )
             ]
 
-            if active_activities_renewable_demands:
-                usage = [sum(x) for x in zip(*active_activities_renewable_demands)]
-            else:
-                usage = [0] * project.num_renewable
+            timeslot_renewable_errors = [
+                    f"Renewable resource {r} exceeded at time {timeslot}: "
+                    f"usage {usage[r]} > capacity {project.renewable_capacities[r]}"
+                    for r in range(project.num_renewable) if usage[r] > project.renewable_capacities[r]
+                ]
 
-            for r in range(project.num_renewable):
-                if usage[r] > project.renewable_capacities[r]:
-                    errors.append(
-                        f"Renewable resource {r} exceeded at time {timeslot}: "
-                        f"usage {usage[r]} > capacity {project.renewable_capacities[r]}"
-                    )
+            errors.extend(timeslot_renewable_errors)
+
         return errors
 
     @staticmethod
