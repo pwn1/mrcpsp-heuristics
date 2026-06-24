@@ -41,15 +41,20 @@ class ScheduleValidator:
         # Iterate over each timeslot, and calculate resource usage at each point
         for timeslot in range(schedule.compute_makespan(project)):
 
-            usage = [0] * project.num_renewable
+            active_activities = [
+                activity for activity in schedule.scheduled_activities if
+                activity.start_time <= timeslot < activity.end_time
+            ]
 
-            for activity_index in range(project.num_activities):
-                mode = project.activities[activity_index].modes[schedule.mode_assignments[activity_index]]
-                st = schedule.start_times[activity_index]
+            active_activities_renewable_demands = [
+                activity.selected_mode.renewable_demands for activity in active_activities
+            ]
 
-                if st <= timeslot < st + mode.duration:
-                    for r in range(project.num_renewable):
-                        usage[r] += mode.renewable_demands[r]
+            if active_activities_renewable_demands:
+                usage = [sum(x) for x in zip(*active_activities_renewable_demands)]
+            else:
+                usage = [0] * project.num_renewable
+
             for r in range(project.num_renewable):
                 if usage[r] > project.renewable_capacities[r]:
                     errors.append(
@@ -62,15 +67,17 @@ class ScheduleValidator:
     def check_precedence_constraints(project: Project, schedule: Schedule):
         # Check precedence constraints
         errors = []
-        for act in project.activities:
-            for s in act.successors:
-                mode = act.modes[schedule.mode_assignments[act.id]]
-                finish = schedule.start_times[act.id] + mode.duration
-                if finish > schedule.start_times[s]:
+        scheduled_activities = schedule.scheduled_activities
+
+        for activity in scheduled_activities:
+            successors = [scheduled_activities[index] for index in activity.successors]
+            for successor in successors:
+                if activity.end_time > successor.start_time:
                     errors.append(
-                        f"Precedence violation: activity {act.id} finishes at {finish} "
-                        f"but successor {s} starts at {schedule.start_times[s]}"
+                        f"Precedence violation: activity {activity.id} finishes at {activity.end_time} "
+                        f"but successor {successor.id} starts at {successor.start_time}"
                     )
+
         return errors
 
     @staticmethod
