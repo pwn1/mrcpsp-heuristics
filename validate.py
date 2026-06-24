@@ -16,33 +16,9 @@ class ScheduleValidator:
         # so we early return
         if errors: return errors
 
-        # Check precedence constraints
-        for act in project.activities:
-            for s in act.successors:
-                mode = act.modes[schedule.mode_assignments[act.id]]
-                finish = schedule.start_times[act.id] + mode.duration
-                if finish > schedule.start_times[s]:
-                    errors.append(
-                        f"Precedence violation: activity {act.id} finishes at {finish} "
-                        f"but successor {s} starts at {schedule.start_times[s]}"
-                    )
+        errors.extend(self.check_precedence_constraints(project, schedule))
 
-        # Check renewable resource constraints
-        makespan = schedule.compute_makespan(project)
-        for t in range(makespan):
-            usage = [0] * project.num_renewable
-            for i in range(project.num_activities):
-                mode = project.activities[i].modes[schedule.mode_assignments[i]]
-                st = schedule.start_times[i]
-                if st <= t < st + mode.duration:
-                    for r in range(project.num_renewable):
-                        usage[r] += mode.renewable_demands[r]
-            for r in range(project.num_renewable):
-                if usage[r] > project.renewable_capacities[r]:
-                    errors.append(
-                        f"Renewable resource {r} exceeded at time {t}: "
-                        f"usage {usage[r]} > capacity {project.renewable_capacities[r]}"
-                    )
+        errors.extend(self._check_renewable_resource_constraints(project, schedule))
 
         # Check non-renewable resource constraints
         for nr in range(project.num_nonrenewable):
@@ -56,6 +32,45 @@ class ScheduleValidator:
                     f"total {total} > capacity {project.nonrenewable_capacities[nr]}"
                 )
 
+        return errors
+
+    @staticmethod
+    def _check_renewable_resource_constraints(project: Project, schedule: Schedule):
+        errors = []
+
+        # Iterate over each timeslot, and calculate resource usage at each point
+        for timeslot in range(schedule.compute_makespan(project)):
+
+            usage = [0] * project.num_renewable
+
+            for activity_index in range(project.num_activities):
+                mode = project.activities[activity_index].modes[schedule.mode_assignments[activity_index]]
+                st = schedule.start_times[activity_index]
+
+                if st <= timeslot < st + mode.duration:
+                    for r in range(project.num_renewable):
+                        usage[r] += mode.renewable_demands[r]
+            for r in range(project.num_renewable):
+                if usage[r] > project.renewable_capacities[r]:
+                    errors.append(
+                        f"Renewable resource {r} exceeded at time {timeslot}: "
+                        f"usage {usage[r]} > capacity {project.renewable_capacities[r]}"
+                    )
+        return errors
+
+    @staticmethod
+    def check_precedence_constraints(project: Project, schedule: Schedule):
+        # Check precedence constraints
+        errors = []
+        for act in project.activities:
+            for s in act.successors:
+                mode = act.modes[schedule.mode_assignments[act.id]]
+                finish = schedule.start_times[act.id] + mode.duration
+                if finish > schedule.start_times[s]:
+                    errors.append(
+                        f"Precedence violation: activity {act.id} finishes at {finish} "
+                        f"but successor {s} starts at {schedule.start_times[s]}"
+                    )
         return errors
 
     @staticmethod
