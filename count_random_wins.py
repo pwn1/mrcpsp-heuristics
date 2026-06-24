@@ -45,7 +45,7 @@ def run(directory, max_instances=100):
                     sch = sgs_fn(project, pr_fn, mr_fn, mode_is_context_aware=is_ca)
                     if sch is None:
                         continue
-                    ms = sch.compute_makespan(project)
+                    ms = sch.compute_makespan()
                     if best_ms is None or ms < best_ms:
                         best_ms = ms
                         winners = [(sgs_name, pr_name, mr_name)]

@@ -66,7 +66,7 @@ def _critical_activities(project: Project, schedule: Schedule) -> list[int]:
     n = project.num_activities
     durs = [project.activities[i].modes[schedule.mode_assignments[i]].duration
             for i in range(n)]
-    horizon = schedule.compute_makespan(project)
+    horizon = schedule.compute_makespan()
     es, lf = _cpm(project, durs, horizon)
     return [j for j in range(n) if lf[j] - es[j] == durs[j]]
 
@@ -88,7 +88,7 @@ def _try_mode_changes(project, priority_list, modes, best_ms, rng,
             sched = _evaluate(project, priority_list, new_modes)
             if sched is None:
                 continue
-            ms = sched.compute_makespan(project)
+            ms = sched.compute_makespan()
             if ms < best_ms:
                 return new_modes, sched, ms
     return None
@@ -108,7 +108,7 @@ def _try_swaps(project, priority_list, modes, best_ms, rng, deadline):
         sched = _evaluate(project, new_list, modes)
         if sched is None:
             continue
-        ms = sched.compute_makespan(project)
+        ms = sched.compute_makespan()
         if ms < best_ms:
             return new_list, sched, ms
     return None
@@ -127,7 +127,7 @@ def _try_shifts(project, priority_list, modes, best_ms, rng, deadline):
         sched = _evaluate(project, new_list, modes)
         if sched is None:
             continue
-        ms = sched.compute_makespan(project)
+        ms = sched.compute_makespan()
         if ms < best_ms:
             return new_list, sched, ms
     return None
@@ -171,7 +171,7 @@ def local_search(project: Project, seed_schedule: Schedule, *,
     best_modes = list(seed_schedule.mode_assignments)
     best_list = _priority_list_from_schedule(seed_schedule, n)
     best_schedule = seed_schedule
-    seed_ms = best_ms = seed_schedule.compute_makespan(project)
+    seed_ms = best_ms = seed_schedule.compute_makespan()
 
     cur_modes = list(best_modes)
     cur_list = list(best_list)
@@ -229,7 +229,7 @@ def local_search(project: Project, seed_schedule: Schedule, *,
                 cur_ms = best_ms
             else:
                 cur_schedule = sched
-                cur_ms = sched.compute_makespan(project)
+                cur_ms = sched.compute_makespan()
             perturbations += 1
 
         rounds += 1

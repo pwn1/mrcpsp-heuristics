@@ -85,10 +85,10 @@ class Schedule:
 
         return scheduled_activities
 
-    def compute_makespan(self, project: Project) -> int:
+    def compute_makespan(self) -> int:
         """Compute makespan as the maximum finish time across all activities."""
         max_finish = 0
-        for act in project.activities:
+        for act in self.project.activities:
             mode = act.modes[self.mode_assignments[act.id]]
             finish = self.start_times[act.id] + mode.duration
             if finish > max_finish:

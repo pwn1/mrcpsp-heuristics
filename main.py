@@ -59,7 +59,7 @@ def run_all_combinations(filepath: str):
             ms_str, status = "-", "INFEASIBLE"
         else:
             errors = validate_schedule(project, schedule)
-            ms_str = str(schedule.compute_makespan(project))
+            ms_str = str(schedule.compute_makespan())
             status = f"INVALID ({len(errors)} errors)" if errors else "OK"
         print(f"{sgs_name:<10} {pr_name:<8} {mr_name:<20} {ms_str:>8}  {status}")
 
@@ -75,7 +75,7 @@ def run_best(filepath: str):
         schedule = _run_combo(project, *combo)
         if schedule is None or validate_schedule(project, schedule):
             continue
-        ms = schedule.compute_makespan(project)
+        ms = schedule.compute_makespan()
         if best_ms is None or ms < best_ms:
             best_ms, best_schedule, best_combo = ms, schedule, combo
 
@@ -105,7 +105,7 @@ def _param_contents(project, schedule, best_combo, source_path,
     indices to retain (in original order). Pruned modes are dropped and
     surviving modes are renumbered 1..k in the output."""
     n = project.num_activities
-    ms = schedule.compute_makespan(project)
+    ms = schedule.compute_makespan()
     lb = compute_lower_bound(project)
     assert lb <= ms, f"unsound LB: lb={lb} > heuristic UB={ms}"
     sgs_name, pr_name, mr_name = best_combo
@@ -175,7 +175,7 @@ def _gen_param_worker(filepath: str) -> tuple[str, int | None, str]:
     kept_modes = None
     near_critical_paths = None
     if PRUNE_MODES:
-        ms = schedule.compute_makespan(project)
+        ms = schedule.compute_makespan()
         prunable = time_window_prunable(project, ms)
         kept_modes = [
             [i for i in range(len(act.modes)) if i not in set(prunable[j])]
@@ -187,7 +187,7 @@ def _gen_param_worker(filepath: str) -> tuple[str, int | None, str]:
     with open(out_path, "w") as f:
         f.write(_param_contents(project, schedule, combo, filepath,
                                 kept_modes, near_critical_paths))
-    return (filepath, schedule.compute_makespan(project), "OK")
+    return (filepath, schedule.compute_makespan(), "OK")
 
 
 def generate_param(path: str, workers: int = None):
@@ -386,7 +386,7 @@ def _run_instance(filepath: str) -> tuple[str, dict[tuple, int | None]]:
     results = {}
     for combo in _iter_combos():
         schedule = _run_combo(project, *combo)
-        results[combo] = (schedule.compute_makespan(project)
+        results[combo] = (schedule.compute_makespan()
                           if schedule is not None else None)
     return os.path.basename(filepath), results
 
@@ -524,7 +524,7 @@ if __name__ == "__main__":
             print(f"No feasible solution found for {os.path.basename(filepath)}")
             sys.exit(1)
         print(f"Instance:  {os.path.basename(filepath)}")
-        print(f"Makespan:  {schedule.compute_makespan(project)}")
+        print(f"Makespan:  {schedule.compute_makespan()}")
         print(f"Best combo: {' / '.join(combo)}")
         sol_path = os.path.splitext(filepath)[0] + "_solution.csv"
         with open(sol_path, "w", newline="") as f:

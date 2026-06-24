@@ -6,19 +6,20 @@ from mrcpsp import Project, Schedule
 
 
 class ScheduleValidator:
-    def validate(self, project: Project, schedule: Schedule) -> list[str]:
+    def validate(self, schedule: Schedule) -> list[str]:
         """Validate a MRCPSP schedule."""
-        errors = self.check_modes_are_valid(project, schedule)
+        errors = self.check_modes_are_valid(schedule)
 
         # If modes are invalid, this will cause out of bounds errors for subsequent checks,
         # so we early return
         if errors: return errors
 
-        errors.extend(self.check_precedence_constraints(project, schedule))
+        errors.extend(self.check_precedence_constraints(schedule))
 
-        errors.extend(self._check_renewable_resource_constraints(project, schedule))
+        errors.extend(self._check_renewable_resource_constraints(schedule))
 
         # Check non-renewable resource constraints
+        project = schedule.project
         for nr in range(project.num_nonrenewable):
             total = sum(
                 project.activities[i].modes[schedule.mode_assignments[i]].nonrenewable_demands[nr]
@@ -33,11 +34,13 @@ class ScheduleValidator:
         return errors
 
     @staticmethod
-    def _check_renewable_resource_constraints(project: Project, schedule: Schedule):
+    def _check_renewable_resource_constraints(schedule: Schedule):
         errors = []
 
+        project = schedule.project
+
         # Iterate over each timeslot, and calculate resource usage at each point
-        for timeslot in range(schedule.compute_makespan(project)):
+        for timeslot in range(schedule.compute_makespan()):
 
             active_activities_renewable_demands = [
                 activity.selected_mode.renewable_demands
@@ -62,7 +65,7 @@ class ScheduleValidator:
         return errors
 
     @staticmethod
-    def check_precedence_constraints(project: Project, schedule: Schedule):
+    def check_precedence_constraints(schedule: Schedule):
         # Check precedence constraints
         errors = []
         scheduled_activities = schedule.scheduled_activities
@@ -79,10 +82,10 @@ class ScheduleValidator:
         return errors
 
     @staticmethod
-    def check_modes_are_valid(project: Project, schedule: Schedule):
+    def check_modes_are_valid(schedule: Schedule):
         # Check mode assignments are valid indices
         errors = []
-
+        project = schedule.project
         for activity_index in range(project.num_activities):
             activity = project.activities[activity_index]
             mode_assignment = schedule.mode_assignments[activity_index]
@@ -99,4 +102,4 @@ def validate_schedule(project: Project, schedule: Schedule) -> list[str]:
 
     Returns a list of violation descriptions (empty = valid).
     """
-    return ScheduleValidator().validate(project, schedule)
+    return ScheduleValidator().validate(schedule)
