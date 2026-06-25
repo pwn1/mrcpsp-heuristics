@@ -1,24 +1,17 @@
 from mrcpsp import Project, Schedule
+from schedule_generation_schemes.InitialModeAssigner import InitialModeAssigner
+
 
 class ScheduleGenerator:
-    def __init__(self, core, priority_fn, mode_fn, mode_is_context_aware):
+    def __init__(self, core, priority_fn, mode_fn, initial_mode_assigner : InitialModeAssigner):
         self.core = core
         self.priority_fn = priority_fn
         self.mode_fn = mode_fn
-        self.mode_is_context_aware = mode_is_context_aware
+        self.initial_mode_assigner = initial_mode_assigner
 
     def run(self, project: Project) -> Schedule | None:
-        n = project.num_activities
-        mode_assignments = [0] * n
-
-        if self.mode_is_context_aware:
-            proxy_modes = [min(range(len(a.modes)), key=lambda m: a.modes[m].duration)
-                           for a in project.activities]
-            priorities = self.priority_fn(project=project, mode_assignments=proxy_modes)
-            self.core(project, priorities, mode_assignments, mode_fn=self.mode_fn)
-        else:
-            for i in range(n):
-                mode_assignments[i] = self.mode_fn(activity=project.activities[i])
+        mode_assignments = (self.initial_mode_assigner
+                            .assign_modes(project, self.priority_fn, self.mode_fn, self.core))
 
         if not self._repair_nonrenewable(project, mode_assignments):
             return None
