@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Callable
+
+from mrcpsp import Project
 from schedule_generation_schemes.ScheduleGeneratorFactory import ScheduleGeneratorFactory
 from schedule_generation_schemes.schedulers import SerialScheduler, ParallelScheduler
 
@@ -16,7 +19,12 @@ References:
 # Public SGS entry points
 # ---------------------------------------------------------------------------
 
-def serial_sgs(project, priority_fn, mode_fn, mode_is_context_aware=False):
+def serial_sgs(
+        project:Project,
+        priority_fn:Callable,
+        mode_fn:Callable,
+        mode_is_context_aware:bool=False
+):
     """Serial Schedule Generation Scheme. Schedules activities one at a time in
     priority order at their earliest feasible start. For context-aware mode
     rules, a two-pass approach is used (first pass selects modes, NR repair,
@@ -30,7 +38,12 @@ def serial_sgs(project, priority_fn, mode_fn, mode_is_context_aware=False):
     return schedule_generator.run(project)
 
 
-def parallel_sgs(project, priority_fn, mode_fn, mode_is_context_aware=False):
+def parallel_sgs(
+        project:Project,
+        priority_fn:Callable,
+        mode_fn:Callable,
+        mode_is_context_aware:bool=False
+):
     """Parallel Schedule Generation Scheme. Advances time step by step,
     scheduling all eligible activities at each decision point. Two-pass for
     context-aware mode rules (same as serial_sgs)."""
