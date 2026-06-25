@@ -25,9 +25,8 @@ class ContextAwareModeAssigner:
         proxy_modes = [min(range(len(a.modes)), key=lambda m: a.modes[m].duration)
                        for a in project.activities]
         priorities = priority_fn(project=project, mode_assignments=proxy_modes)
-        mode_assignments = [0] * project.num_activities
-        core_scheduler.context_aware_pass(project, priorities, mode_assignments, mode_fn=mode_fn)
-        return mode_assignments
+        schedule = core_scheduler.context_aware_pass(project, priorities, mode_fn=mode_fn)
+        return schedule.mode_assignments
 
 
 class ContextUnAwareModeAssigner:

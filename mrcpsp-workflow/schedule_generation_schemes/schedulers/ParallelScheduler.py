@@ -6,13 +6,15 @@ from schedule_generation_schemes.schedulers.Scheduler import Scheduler
 
 class ParallelScheduler(Scheduler):
 
-    def context_aware_pass(self, project:Project, priorities,mode_assignments, mode_fn: Callable) -> Schedule:
+    def context_aware_pass(self, project:Project, priorities, mode_fn: Callable) -> Schedule:
+        mode_assignments = [0] * project.num_activities
         return self._run(project, priorities, mode_assignments, mode_fn=mode_fn)
 
     def fixed_mode_pass(self, project:Project, priorities, mode_assignments) -> Schedule:
         return self._run(project, priorities, list(mode_assignments), mode_fn=None)
 
-    def _run(self, project:Project, priorities, mode_assignments, mode_fn: Callable | None) -> Schedule:
+    def _run(self, project:Project, priorities, input_mode_assignments, mode_fn: Callable | None) -> Schedule:
+        mode_assignments = input_mode_assignments.copy()
         n = project.num_activities
         horizon = self._compute_horizon(project)
         profile = self._make_resource_profile(project.num_renewable, horizon)
