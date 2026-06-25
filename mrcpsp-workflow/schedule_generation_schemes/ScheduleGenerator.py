@@ -21,12 +21,16 @@ class ScheduleGenerator:
         self.initial_mode_assigner = initial_mode_assigner
 
     def run(self, project: Project) -> Schedule | None:
-        mode_assignments = (self.initial_mode_assigner
-                            .assign_modes(project, self.priority_fn, self.mode_fn, self.core))
+        mode_assignments = (
+            self
+            .initial_mode_assigner
+            .assign_modes(project, self.priority_fn, self.mode_fn, self.core)
+        )
 
         repaired_mode_assignments = NonRenewableRepair().repair_nonrenewable(project, mode_assignments)
-        if repaired_mode_assignments==NonRenewableRepair.INFEASIBLE:
-            return None
+
+        if repaired_mode_assignments is None: return None
+
         mode_assignments = repaired_mode_assignments
 
         priorities = self.priority_fn(project=project, mode_assignments=mode_assignments)
