@@ -34,4 +34,4 @@ class ScheduleGenerator:
         mode_assignments = repaired_mode_assignments
 
         priorities = self.priority_fn(project=project, mode_assignments=mode_assignments)
-        return self.core(project, priorities, mode_assignments)
+        return self.core.fixed_mode_pass(project, priorities, mode_assignments)

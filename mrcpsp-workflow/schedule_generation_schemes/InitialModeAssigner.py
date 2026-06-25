@@ -11,7 +11,7 @@ class ContextAwareModeAssigner:
                        for a in project.activities]
         priorities = priority_fn(project=project, mode_assignments=proxy_modes)
         mode_assignments = [0] * project.num_activities
-        core(project, priorities, mode_assignments, mode_fn=mode_fn)
+        core.context_aware_pass(project, priorities, mode_assignments, mode_fn=mode_fn)
         return mode_assignments
 
 class ContextUnAwareModeAssigner:
