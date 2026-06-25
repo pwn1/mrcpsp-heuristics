@@ -1,26 +1,28 @@
 from mrcpsp import Project, Schedule
 
 class ScheduleGenerator:
-    def __init__(self, core):
+    def __init__(self, core, priority_fn, mode_fn, mode_is_context_aware):
         self.core = core
+        self.priority_fn = priority_fn
+        self.mode_fn = mode_fn
+        self.mode_is_context_aware = mode_is_context_aware
 
-    def run(self, project: Project, priority_fn, mode_fn,
-             mode_is_context_aware: bool) -> Schedule | None:
+    def run(self, project: Project) -> Schedule | None:
         n = project.num_activities
         mode_assignments = [0] * n
 
-        if mode_is_context_aware:
+        if self.mode_is_context_aware:
             proxy_modes = [min(range(len(a.modes)), key=lambda m: a.modes[m].duration)
                            for a in project.activities]
-            priorities = priority_fn(project=project, mode_assignments=proxy_modes)
-            self.core(project, priorities, mode_assignments, mode_fn=mode_fn)
+            priorities = self.priority_fn(project=project, mode_assignments=proxy_modes)
+            self.core(project, priorities, mode_assignments, mode_fn=self.mode_fn)
         else:
             for i in range(n):
-                mode_assignments[i] = mode_fn(activity=project.activities[i])
+                mode_assignments[i] = self.mode_fn(activity=project.activities[i])
 
         if not self._repair_nonrenewable(project, mode_assignments):
             return None
-        priorities = priority_fn(project=project, mode_assignments=mode_assignments)
+        priorities = self.priority_fn(project=project, mode_assignments=mode_assignments)
         return self.core(project, priorities, mode_assignments)
 
     def _repair_nonrenewable(self, project: Project, mode_assignments: list[int]) -> bool:

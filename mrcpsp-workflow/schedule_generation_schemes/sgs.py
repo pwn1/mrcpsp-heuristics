@@ -173,18 +173,21 @@ def serial_sgs(project, priority_fn, mode_fn, mode_is_context_aware=False):
     priority order at their earliest feasible start. For context-aware mode
     rules, a two-pass approach is used (first pass selects modes, NR repair,
     second pass re-schedules)."""
-    schedule_generator = ScheduleGenerator(core=_serial_schedule)
+    schedule_generator = ScheduleGenerator(core=_serial_schedule, priority_fn=priority_fn, mode_fn=mode_fn,
+                                           mode_is_context_aware=mode_is_context_aware)
 
-    return schedule_generator.run(project, priority_fn, mode_fn, mode_is_context_aware)
+    return schedule_generator.run(project)
 
 
 def parallel_sgs(project, priority_fn, mode_fn, mode_is_context_aware=False):
     """Parallel Schedule Generation Scheme. Advances time step by step,
     scheduling all eligible activities at each decision point. Two-pass for
     context-aware mode rules (same as serial_sgs)."""
-    schedule_generator = ScheduleGenerator(core=_parallel_schedule)
+    schedule_generator = ScheduleGenerator(core=_parallel_schedule, priority_fn=priority_fn, mode_fn=mode_fn,
+                                           mode_is_context_aware=mode_is_context_aware)
 
-    return schedule_generator.run(project, priority_fn, mode_fn, mode_is_context_aware)
+    return schedule_generator.run(project)
+
 
 
 SGS_SCHEMES = {
