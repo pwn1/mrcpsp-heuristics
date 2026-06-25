@@ -16,7 +16,7 @@ References:
 import hashlib
 import random
 from mrcpsp import Project, Activity
-from sgs import _find_earliest_feasible_start
+from schedule_generation_schemes import _find_earliest_feasible_start
 
 
 # ---------------------------------------------------------------------------
