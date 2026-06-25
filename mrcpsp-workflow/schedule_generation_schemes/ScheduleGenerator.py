@@ -13,72 +13,72 @@ class ScheduleGenerator:
         mode_assignments = (self.initial_mode_assigner
                             .assign_modes(project, self.priority_fn, self.mode_fn, self.core))
 
-        if not self._repair_nonrenewable(project, mode_assignments):
+        repaired_mode_assignments = self._repair_nonrenewable(project, mode_assignments)
+        if repaired_mode_assignments=="no solution found":
             return None
+        mode_assignments = repaired_mode_assignments
+
         priorities = self.priority_fn(project=project, mode_assignments=mode_assignments)
         return self.core(project, priorities, mode_assignments)
 
-    def _repair_nonrenewable(self, project: Project, mode_assignments: list[int]) -> bool:
-        """Greedily repair mode assignments to satisfy non-renewable constraints.
 
-        At each step, picks the mode switch that gives the best total NR reduction,
-        with duration increase as tie-breaker. Returns True if feasible.
+    # Change this to either return the fixed mode_assignments, or "infeasible" if it is impossible to do so
+    def _repair_nonrenewable(self, project: Project, mode_assignments: list[int]) -> list[int]|str:
+        """ Uses a greedy local hill climbing search to try and statisfy non-renewable
+        constraints.
+
+        At each step, it picks a mode switch which give the best total non-renewable reduction,
+        with duration increase as tie-breaker.
+
+        Returns repaired mode-assignments is feasible solution is found, and the string
+        'infeasible' if no solution is found (either because we got stuck in a local optima,
+        or hit the iteration cap).
         """
-        n = project.num_activities
-        nnr = project.num_nonrenewable
-        caps = project.nonrenewable_capacities
+        current_mode_assignment = mode_assignments.copy()
 
-        totals = [
+        iteration_limit = project.num_activities * 10
+
+        for _ in range(iteration_limit):
+            current_score = self._get_mode_assignment_score(project, current_mode_assignment)
+            if current_score[0] == 0:
+                return current_mode_assignment
+
+            new_best_mode_assignment = current_mode_assignment
+            best_mode_assignment_score = current_score
+
+            for i in range(project.num_activities):
+                activity = project.activities[i]
+
+                for mode_index, new_mode in enumerate(activity.modes):
+                    temp_mode_assignment = current_mode_assignment.copy()
+                    temp_mode_assignment[i] = mode_index
+                    score = self._get_mode_assignment_score(project, temp_mode_assignment)
+                    if score[0] < best_mode_assignment_score[0] or (score[0]==best_mode_assignment_score[0] and score[1]<best_mode_assignment_score[1]):
+                        new_best_mode_assignment = temp_mode_assignment
+                        best_mode_assignment_score = score
+
+            if new_best_mode_assignment == current_mode_assignment:
+                return "no solution found"
+            current_mode_assignment = new_best_mode_assignment
+
+        return "no solution found" # Iteration cap has been hit
+
+    @staticmethod
+    def _get_mode_assignment_score(project: Project, mode_assignments: list[int])-> tuple[int, int]:
+        total_non_renewable_use = [
             sum(project.activities[i].modes[mode_assignments[i]].nonrenewable_demands[nr]
-                for i in range(n))
-            for nr in range(nnr)
+                for i in range(project.num_activities))
+            for nr in range(project.num_nonrenewable)
         ]
 
-        for _ in range(n * 10):
-            excesses = [max(0, totals[nr] - caps[nr]) for nr in range(nnr)]
-            if sum(excesses) == 0:
-                return True
+        non_renewable_scores = [
+            max(0, total_non_renewable_use[nr] - project.nonrenewable_capacities[nr])
+            for nr in range(project.num_nonrenewable)
+        ]
 
-            best = (0, float("inf"), -1, -1)  # (reduction, dur_cost, act, mode)
-            for i in range(n):
-                act = project.activities[i]
-                if len(act.modes) <= 1:
-                    continue
-                cur_mode = mode_assignments[i]
-                cur_dur = act.modes[cur_mode].duration
-                cur_nr = act.modes[cur_mode].nonrenewable_demands
+        duration_score = [
+            project.activities[i].modes[mode_assignments[i]].duration
+            for i in range(project.num_activities)
+        ]
 
-                for m, new_mode in enumerate(act.modes):
-                    if m == cur_mode:
-                        continue
-                    new_nr = new_mode.nonrenewable_demands
-                    reduction = 0
-                    for nr in range(nnr):
-                        diff = cur_nr[nr] - new_nr[nr]
-                        new_ex = max(0, totals[nr] - diff - caps[nr])
-                        reduction += excesses[nr] - new_ex
-                    dur_cost = new_mode.duration - cur_dur
-                    if reduction > best[0] or (reduction == best[0] and reduction > 0
-                                               and dur_cost < best[1]):
-                        best = (reduction, dur_cost, i, m)
-
-            if best[2] == -1 or best[0] <= 0:
-                return False
-            i, m = best[2], best[3]
-            old_nr = project.activities[i].modes[mode_assignments[i]].nonrenewable_demands
-            new_nr = project.activities[i].modes[m].nonrenewable_demands
-            for nr in range(nnr):
-                totals[nr] += new_nr[nr] - old_nr[nr]
-            mode_assignments[i] = m
-
-        return self._check_nonrenewable_feasibility(project, mode_assignments)
-
-    def _check_nonrenewable_feasibility(self, project, mode_assignments) -> bool:
-        for nr in range(project.num_nonrenewable):
-            total = sum(
-                project.activities[i].modes[mode_assignments[i]].nonrenewable_demands[nr]
-                for i in range(project.num_activities)
-            )
-            if total > project.nonrenewable_capacities[nr]:
-                return False
-        return True
+        return sum(non_renewable_scores),sum(duration_score)
