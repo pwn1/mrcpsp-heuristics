@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+from schedule_generation_schemes.ScheduleGenerator import ScheduleGenerator
+
 """Schedule Generation Schemes for multi-mode RCPSP.
 
 References:
@@ -57,73 +60,6 @@ def _find_earliest_feasible_start(duration, demands, capacities, profile, earlie
         if not skip:
             return t
         t += skip
-
-
-def _check_nonrenewable_feasibility(project, mode_assignments) -> bool:
-    for nr in range(project.num_nonrenewable):
-        total = sum(
-            project.activities[i].modes[mode_assignments[i]].nonrenewable_demands[nr]
-            for i in range(project.num_activities)
-        )
-        if total > project.nonrenewable_capacities[nr]:
-            return False
-    return True
-
-
-def _repair_nonrenewable(project: Project, mode_assignments: list[int]) -> bool:
-    """Greedily repair mode assignments to satisfy non-renewable constraints.
-
-    At each step, picks the mode switch that gives the best total NR reduction,
-    with duration increase as tie-breaker. Returns True if feasible.
-    """
-    n = project.num_activities
-    nnr = project.num_nonrenewable
-    caps = project.nonrenewable_capacities
-
-    totals = [
-        sum(project.activities[i].modes[mode_assignments[i]].nonrenewable_demands[nr]
-            for i in range(n))
-        for nr in range(nnr)
-    ]
-
-    for _ in range(n * 10):
-        excesses = [max(0, totals[nr] - caps[nr]) for nr in range(nnr)]
-        if sum(excesses) == 0:
-            return True
-
-        best = (0, float("inf"), -1, -1)  # (reduction, dur_cost, act, mode)
-        for i in range(n):
-            act = project.activities[i]
-            if len(act.modes) <= 1:
-                continue
-            cur_mode = mode_assignments[i]
-            cur_dur = act.modes[cur_mode].duration
-            cur_nr = act.modes[cur_mode].nonrenewable_demands
-
-            for m, new_mode in enumerate(act.modes):
-                if m == cur_mode:
-                    continue
-                new_nr = new_mode.nonrenewable_demands
-                reduction = 0
-                for nr in range(nnr):
-                    diff = cur_nr[nr] - new_nr[nr]
-                    new_ex = max(0, totals[nr] - diff - caps[nr])
-                    reduction += excesses[nr] - new_ex
-                dur_cost = new_mode.duration - cur_dur
-                if reduction > best[0] or (reduction == best[0] and reduction > 0
-                                           and dur_cost < best[1]):
-                    best = (reduction, dur_cost, i, m)
-
-        if best[2] == -1 or best[0] <= 0:
-            return False
-        i, m = best[2], best[3]
-        old_nr = project.activities[i].modes[mode_assignments[i]].nonrenewable_demands
-        new_nr = project.activities[i].modes[m].nonrenewable_demands
-        for nr in range(nnr):
-            totals[nr] += new_nr[nr] - old_nr[nr]
-        mode_assignments[i] = m
-
-    return _check_nonrenewable_feasibility(project, mode_assignments)
 
 
 # ---------------------------------------------------------------------------
@@ -232,43 +168,23 @@ def _parallel_schedule(project: Project, priorities, mode_assignments,
 # Public SGS entry points
 # ---------------------------------------------------------------------------
 
-def _run_sgs(project: Project, priority_fn, mode_fn,
-             mode_is_context_aware: bool, core) -> Schedule | None:
-    """Shared driver: context-free assigns modes up front; context-aware picks
-    modes during a first pass; both then NR-repair and re-schedule."""
-    n = project.num_activities
-    mode_assignments = [0] * n
-
-    if mode_is_context_aware:
-        proxy_modes = [min(range(len(a.modes)), key=lambda m: a.modes[m].duration)
-                       for a in project.activities]
-        priorities = priority_fn(project=project, mode_assignments=proxy_modes)
-        core(project, priorities, mode_assignments, mode_fn=mode_fn)
-    else:
-        for i in range(n):
-            mode_assignments[i] = mode_fn(activity=project.activities[i])
-
-    if not _repair_nonrenewable(project, mode_assignments):
-        return None
-    priorities = priority_fn(project=project, mode_assignments=mode_assignments)
-    return core(project, priorities, mode_assignments)
-
-
 def serial_sgs(project, priority_fn, mode_fn, mode_is_context_aware=False):
     """Serial Schedule Generation Scheme. Schedules activities one at a time in
     priority order at their earliest feasible start. For context-aware mode
     rules, a two-pass approach is used (first pass selects modes, NR repair,
     second pass re-schedules)."""
-    return _run_sgs(project, priority_fn, mode_fn, mode_is_context_aware,
-                    _serial_schedule)
+    schedule_generator = ScheduleGenerator(core=_serial_schedule)
+
+    return schedule_generator.run(project, priority_fn, mode_fn, mode_is_context_aware)
 
 
 def parallel_sgs(project, priority_fn, mode_fn, mode_is_context_aware=False):
     """Parallel Schedule Generation Scheme. Advances time step by step,
     scheduling all eligible activities at each decision point. Two-pass for
     context-aware mode rules (same as serial_sgs)."""
-    return _run_sgs(project, priority_fn, mode_fn, mode_is_context_aware,
-                    _parallel_schedule)
+    schedule_generator = ScheduleGenerator(core=_parallel_schedule)
+
+    return schedule_generator.run(project, priority_fn, mode_fn, mode_is_context_aware)
 
 
 SGS_SCHEMES = {
