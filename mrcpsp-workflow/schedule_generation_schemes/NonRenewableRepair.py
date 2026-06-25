@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from mrcpsp import Project
 
+
 @dataclass
 class ModeAssignmentScore:
     nonrenewable_score: int
@@ -10,9 +11,10 @@ class ModeAssignmentScore:
     def __lt__(self, other: "ModeAssignmentScore") -> bool:
         return (self.nonrenewable_score, self.duration_score) < (other.nonrenewable_score, other.duration_score)
 
+
 class NonRenewableRepair:
 
-    def repair_nonrenewable(self, project: Project, mode_assignments: list[int]) -> list[int]|None:
+    def repair_nonrenewable(self, project: Project, mode_assignments: list[int]) -> list[int] | None:
         """ Uses a greedy local hill climbing search to try and statisfy non-renewable
         constraints. We are trying to minimize the score (as we want to have the minimal number
         of non-renewable resource violations).
@@ -36,16 +38,16 @@ class NonRenewableRepair:
 
             neighbourhood = self._generate_neighbourhood(project, current_mode_assignment)
 
-            best_neighbour = self._get_best_neighbour(current_score, neighbourhood,project)
+            best_neighbour = self._get_best_neighbour(current_score, neighbourhood, project)
 
             if best_neighbour is None: return None
             current_mode_assignment = best_neighbour
 
-        return None # Iteration cap has been hit
+        return None  # Iteration cap has been hit
 
     @staticmethod
     def _generate_neighbourhood(
-            project:Project,
+            project: Project,
             current_mode_assignment: list[int]
     ) -> list[list[int]]:
         neighbourhood = []
@@ -80,7 +82,7 @@ class NonRenewableRepair:
     def _get_mode_assignment_score(
             project: Project,
             mode_assignments: list[int]
-    )-> ModeAssignmentScore:
+    ) -> ModeAssignmentScore:
 
         total_non_renewable_use = [
             sum(project.activities[i].modes[mode_assignments[i]].nonrenewable_demands[nr]

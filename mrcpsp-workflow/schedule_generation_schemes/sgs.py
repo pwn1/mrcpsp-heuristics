@@ -14,15 +14,16 @@ References:
   - Lova, Tormos & Barber (2006): SGS + priority rules + mode selection for MRCPSP
 """
 
+
 # ---------------------------------------------------------------------------
 # Public SGS entry points
 # ---------------------------------------------------------------------------
 
 def serial_sgs(
-        project:Project,
-        priority_fn:Callable,
-        mode_fn:Callable,
-        mode_is_context_aware:bool=False
+        project: Project,
+        priority_fn: Callable,
+        mode_fn: Callable,
+        mode_is_context_aware: bool = False
 ):
     """Serial Schedule Generation Scheme. Schedules activities one at a time in
     priority order at their earliest feasible start. For context-aware mode
@@ -38,10 +39,10 @@ def serial_sgs(
 
 
 def parallel_sgs(
-        project:Project,
-        priority_fn:Callable,
-        mode_fn:Callable,
-        mode_is_context_aware:bool=False
+        project: Project,
+        priority_fn: Callable,
+        mode_fn: Callable,
+        mode_is_context_aware: bool = False
 ):
     """Parallel Schedule Generation Scheme. Advances time step by step,
     scheduling all eligible activities at each decision point. Two-pass for
@@ -53,7 +54,6 @@ def parallel_sgs(
         mode_is_context_aware=mode_is_context_aware
     )
     return schedule_generator.run(project)
-
 
 
 SGS_SCHEMES = {
