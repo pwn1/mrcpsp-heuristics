@@ -1,10 +1,10 @@
 from typing import Callable
 
 from mrcpsp import Project, Schedule
-from schedule_generation_schemes.schedulers.AbstractScheduler import AbstractScheduler
+from schedule_generation_schemes.schedulers.Scheduler import Scheduler
 
 
-class ParallelScheduler(AbstractScheduler):
+class ParallelScheduler(Scheduler):
 
     def context_aware_pass(self, project:Project, priorities,mode_assignments, mode_fn: Callable) -> Schedule:
         return self._run(project, priorities, mode_assignments, mode_fn=mode_fn)

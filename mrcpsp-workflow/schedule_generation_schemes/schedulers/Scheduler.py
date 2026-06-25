@@ -1,9 +1,10 @@
-from abc import ABC
+from abc import ABC, abstractmethod
+from typing import Callable
 
-from mrcpsp import Project
+from mrcpsp import Project, Schedule
 
 
-class AbstractScheduler(ABC):
+class Scheduler(ABC):
     @staticmethod
     def _make_resource_profile(num_resources: int, horizon: int) -> list[list[int]]:
         return [[0] * horizon for _ in range(num_resources)]
@@ -28,3 +29,9 @@ class AbstractScheduler(ABC):
                 if profile[r][t + dt] + d > caps[r]:
                     return False
         return True
+
+    @abstractmethod
+    def context_aware_pass(self, project:Project, priorities,mode_assignments, mode_fn: Callable) -> Schedule: ...
+
+    @abstractmethod
+    def fixed_mode_pass(self, project:Project, priorities, mode_assignments) -> Schedule: ...

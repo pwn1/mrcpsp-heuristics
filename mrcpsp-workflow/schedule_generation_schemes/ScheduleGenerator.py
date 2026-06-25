@@ -1,21 +1,20 @@
-from dataclasses import dataclass
+from typing import Callable
 
 from mrcpsp import Project, Schedule
 from schedule_generation_schemes.InitialModeAssigner import InitialModeAssigner
 from schedule_generation_schemes.NonRenewableRepair import NonRenewableRepair
+from schedule_generation_schemes.schedulers import Scheduler
 
-
-@dataclass
-class ModeAssignmentScore:
-    nonrenewable_score: int
-    duration_score: int
-
-    def __lt__(self, other: "ModeAssignmentScore") -> bool:
-        return (self.nonrenewable_score, self.duration_score) < (other.nonrenewable_score, other.duration_score)
 
 class ScheduleGenerator:
-    def __init__(self, core, priority_fn, mode_fn, initial_mode_assigner : InitialModeAssigner):
-        self.core = core
+    def __init__(
+            self,
+            core_scheduler: Scheduler,
+            priority_fn: Callable,
+            mode_fn: Callable,
+            initial_mode_assigner: InitialModeAssigner
+    ):
+        self.core_scheduler = core_scheduler
         self.priority_fn = priority_fn
         self.mode_fn = mode_fn
         self.initial_mode_assigner = initial_mode_assigner
@@ -24,7 +23,7 @@ class ScheduleGenerator:
         mode_assignments = (
             self
             .initial_mode_assigner
-            .assign_modes(project, self.priority_fn, self.mode_fn, self.core)
+            .assign_modes(project, self.priority_fn, self.mode_fn, self.core_scheduler)
         )
 
         repaired_mode_assignments = NonRenewableRepair().repair_nonrenewable(project, mode_assignments)
@@ -34,4 +33,4 @@ class ScheduleGenerator:
         mode_assignments = repaired_mode_assignments
 
         priorities = self.priority_fn(project=project, mode_assignments=mode_assignments)
-        return self.core.fixed_mode_pass(project, priorities, mode_assignments)
+        return self.core_scheduler.fixed_mode_pass(project, priorities, mode_assignments)

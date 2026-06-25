@@ -2,10 +2,10 @@ from typing import Callable
 
 from mrcpsp import Project, Schedule
 from schedule_generation_schemes.helpers import find_earliest_feasible_start
-from schedule_generation_schemes.schedulers.AbstractScheduler import AbstractScheduler
+from schedule_generation_schemes.schedulers.Scheduler import Scheduler
 
 
-class SerialScheduler(AbstractScheduler):
+class SerialScheduler(Scheduler):
 
     def context_aware_pass(self, project:Project, priorities, mode_assignments, mode_fn: Callable) -> Schedule:
         return self._run(project, priorities, list(mode_assignments), mode_fn=mode_fn)
