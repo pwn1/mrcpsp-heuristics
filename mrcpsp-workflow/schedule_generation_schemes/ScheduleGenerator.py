@@ -1,6 +1,16 @@
+from dataclasses import dataclass
+
 from mrcpsp import Project, Schedule
 from schedule_generation_schemes.InitialModeAssigner import InitialModeAssigner
 
+
+@dataclass
+class ModeAssignmentScore:
+    nonrenewable_score: int
+    duration_score: int
+
+    def __lt__(self, other: "ModeAssignmentScore") -> bool:
+        return (self.nonrenewable_score, self.duration_score) < (other.nonrenewable_score, other.duration_score)
 
 class ScheduleGenerator:
     def __init__(self, core, priority_fn, mode_fn, initial_mode_assigner : InitialModeAssigner):
@@ -22,7 +32,8 @@ class ScheduleGenerator:
         return self.core(project, priorities, mode_assignments)
 
 
-    # Change this to either return the fixed mode_assignments, or "infeasible" if it is impossible to do so
+
+
     def _repair_nonrenewable(self, project: Project, mode_assignments: list[int]) -> list[int]|str:
         """ Uses a greedy local hill climbing search to try and statisfy non-renewable
         constraints.
@@ -34,9 +45,10 @@ class ScheduleGenerator:
         'infeasible' if no solution is found (either because we got stuck in a local optima,
         or hit the iteration cap).
         """
-        current_mode_assignment = mode_assignments.copy()
 
         iteration_limit = project.num_activities * 10
+
+        current_mode_assignment = mode_assignments.copy()
 
         for _ in range(iteration_limit):
             current_score = self._get_mode_assignment_score(project, current_mode_assignment)
@@ -50,11 +62,7 @@ class ScheduleGenerator:
             for neighbour in neighbourhood:
                 neighbour_score = self._get_mode_assignment_score(project, neighbour)
 
-                better_than_current = neighbour_score[0] < best_mode_assignment_score[0]
-                tiebreak_with_current = (neighbour_score[0] == best_mode_assignment_score[0] and neighbour_score[1] <
-                                         best_mode_assignment_score[1])
-
-                if better_than_current or tiebreak_with_current:
+                if neighbour_score < best_mode_assignment_score:
                     new_best_mode_assignment = neighbour
                     best_mode_assignment_score = neighbour_score
 
