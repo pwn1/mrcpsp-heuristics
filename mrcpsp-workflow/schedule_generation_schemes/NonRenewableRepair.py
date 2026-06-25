@@ -14,7 +14,8 @@ class NonRenewableRepair:
 
     def repair_nonrenewable(self, project: Project, mode_assignments: list[int]) -> list[int]|None:
         """ Uses a greedy local hill climbing search to try and statisfy non-renewable
-        constraints.
+        constraints. We are trying to minimize the score (as we want to have the minimal number
+        of non-renewable resource violations).
 
         At each step, it picks a mode switch which give the best total non-renewable reduction,
         with duration increase as tie-breaker.
@@ -42,7 +43,27 @@ class NonRenewableRepair:
 
         return None # Iteration cap has been hit
 
-    def _get_best_neighbour(self, current_score, neighbourhood,project):
+    @staticmethod
+    def _generate_neighbourhood(
+            project:Project,
+            current_mode_assignment: list[int]
+    ) -> list[list[int]]:
+        neighbourhood = []
+        for activity_index, activity in enumerate(project.activities):
+            for mode_index in range(len(activity.modes)):
+                if mode_index != current_mode_assignment[activity_index]:
+                    new_assignment = current_mode_assignment.copy()
+                    new_assignment[activity_index] = mode_index
+                    neighbourhood.append(new_assignment)
+
+        return neighbourhood
+
+    def _get_best_neighbour(
+            self,
+            current_score: ModeAssignmentScore,
+            neighbourhood: list[list[int]],
+            project: Project
+    ) -> list[int] | None:
         """
         Return best neighbour, or None if no neighbours beat the current score.
         """
@@ -56,20 +77,11 @@ class NonRenewableRepair:
         return best_neighbour
 
     @staticmethod
-    def _generate_neighbourhood(project:Project, current_mode_assignment: list[int]) -> list[list[int]]:
-        neighbourhood = []
-        for activity_index in range(project.num_activities):
-            activity = project.activities[activity_index]
-            for mode_index in range(len(activity.modes)):
-                if mode_index != current_mode_assignment[activity_index]:
-                    new_assignment = current_mode_assignment.copy()
-                    new_assignment[activity_index] = mode_index
-                    neighbourhood.append(new_assignment)
+    def _get_mode_assignment_score(
+            project: Project,
+            mode_assignments: list[int]
+    )-> ModeAssignmentScore:
 
-        return neighbourhood
-
-    @staticmethod
-    def _get_mode_assignment_score(project: Project, mode_assignments: list[int])-> ModeAssignmentScore:
         total_non_renewable_use = [
             sum(project.activities[i].modes[mode_assignments[i]].nonrenewable_demands[nr]
                 for i in range(project.num_activities))
