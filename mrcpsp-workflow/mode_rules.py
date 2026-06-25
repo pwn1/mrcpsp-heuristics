@@ -16,7 +16,7 @@ References:
 import hashlib
 import random
 from mrcpsp import Project, Activity
-from schedule_generation_schemes import _find_earliest_feasible_start
+from schedule_generation_schemes.helpers import find_earliest_feasible_start
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ def _earliest_start_scores(activity: Activity, project: Project = None,
     earliest start rather than on shortest duration."""
     scores = []
     for mode in activity.modes:
-        t = _find_earliest_feasible_start(
+        t = find_earliest_feasible_start(
             mode.duration, mode.renewable_demands,
             project.renewable_capacities, resource_profile, earliest_possible
         )
@@ -83,7 +83,7 @@ def _earliest_finish_scores(activity: Activity, project: Project = None,
     longest_duration as tie-breaker it reproduces their full EFFT rule."""
     scores = []
     for mode in activity.modes:
-        t = _find_earliest_feasible_start(
+        t = find_earliest_feasible_start(
             mode.duration, mode.renewable_demands,
             project.renewable_capacities, resource_profile, earliest_possible
         )
@@ -99,7 +99,7 @@ def _resource_fitting_scores(activity: Activity, project: Project = None,
     context-aware mode score; no specific paper citation."""
     scores = []
     for mode in activity.modes:
-        t = _find_earliest_feasible_start(
+        t = find_earliest_feasible_start(
             mode.duration, mode.renewable_demands,
             project.renewable_capacities, resource_profile, earliest_possible
         )

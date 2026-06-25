@@ -1,6 +1,7 @@
 from typing import Callable
 
 from mrcpsp import Project, Schedule
+from schedule_generation_schemes.helpers import find_earliest_feasible_start
 from schedule_generation_schemes.schedulers.AbstractScheduler import AbstractScheduler
 
 
@@ -35,7 +36,7 @@ class SerialScheduler(AbstractScheduler):
                     resource_profile=profile, earliest_possible=ep,
                 )
             mode = project.activities[act_id].modes[mode_assignments[act_id]]
-            st = self._find_earliest_feasible_start(
+            st = find_earliest_feasible_start(
                 mode.duration, mode.renewable_demands,
                 project.renewable_capacities, profile, ep,
             )
