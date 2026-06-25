@@ -40,28 +40,41 @@ class ScheduleGenerator:
 
         for _ in range(iteration_limit):
             current_score = self._get_mode_assignment_score(project, current_mode_assignment)
-            if current_score[0] == 0:
-                return current_mode_assignment
+
+            if current_score[0] == 0: return current_mode_assignment
 
             new_best_mode_assignment = current_mode_assignment
             best_mode_assignment_score = current_score
 
-            for i in range(project.num_activities):
-                activity = project.activities[i]
+            neighbourhood = self._generate_neighbourhood(project, current_mode_assignment)
+            for neighbour in neighbourhood:
+                neighbour_score = self._get_mode_assignment_score(project, neighbour)
 
-                for mode_index, new_mode in enumerate(activity.modes):
-                    temp_mode_assignment = current_mode_assignment.copy()
-                    temp_mode_assignment[i] = mode_index
-                    score = self._get_mode_assignment_score(project, temp_mode_assignment)
-                    if score[0] < best_mode_assignment_score[0] or (score[0]==best_mode_assignment_score[0] and score[1]<best_mode_assignment_score[1]):
-                        new_best_mode_assignment = temp_mode_assignment
-                        best_mode_assignment_score = score
+                better_than_current = neighbour_score[0] < best_mode_assignment_score[0]
+                tiebreak_with_current = (neighbour_score[0] == best_mode_assignment_score[0] and neighbour_score[1] <
+                                         best_mode_assignment_score[1])
+
+                if better_than_current or tiebreak_with_current:
+                    new_best_mode_assignment = neighbour
+                    best_mode_assignment_score = neighbour_score
 
             if new_best_mode_assignment == current_mode_assignment:
                 return "no solution found"
             current_mode_assignment = new_best_mode_assignment
 
         return "no solution found" # Iteration cap has been hit
+
+    @staticmethod
+    def _generate_neighbourhood(project:Project, current_mode_assignment: list[int]) -> list[list[int]]:
+        neighbourhood = []
+        for activity_index in range(project.num_activities):
+            activity = project.activities[activity_index]
+            for mode_index, mode in enumerate(activity.modes):
+                new_assignment = current_mode_assignment.copy()
+                new_assignment[activity_index] = mode_index
+                neighbourhood.append(new_assignment)
+
+        return neighbourhood
 
     @staticmethod
     def _get_mode_assignment_score(project: Project, mode_assignments: list[int])-> tuple[int, int]:
