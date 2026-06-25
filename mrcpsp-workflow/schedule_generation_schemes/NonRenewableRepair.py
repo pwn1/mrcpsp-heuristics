@@ -35,23 +35,25 @@ class NonRenewableRepair:
 
             neighbourhood = self._generate_neighbourhood(project, current_mode_assignment)
 
-            improved = False
-            new_best_mode_assignment = current_mode_assignment
-            best_mode_assignment_score = current_score
+            best_neighbour = self._get_best_neighbour(current_score, neighbourhood,project)
 
-            for neighbour in neighbourhood:
-                neighbour_score = self._get_mode_assignment_score(project, neighbour)
-
-                if neighbour_score < best_mode_assignment_score:
-                    new_best_mode_assignment = neighbour
-                    best_mode_assignment_score = neighbour_score
-                    improved = True
-
-            if not improved:
-                return None
-            current_mode_assignment = new_best_mode_assignment
+            if best_neighbour is None: return None
+            current_mode_assignment = best_neighbour
 
         return None # Iteration cap has been hit
+
+    def _get_best_neighbour(self, current_score, neighbourhood,project):
+        """
+        Return best neighbour, or None if no neighbours beat the current score.
+        """
+        best_neighbour = None
+        best_neighbour_score = current_score
+        for neighbour in neighbourhood:
+            neighbour_score = self._get_mode_assignment_score(project, neighbour)
+            if neighbour_score < best_neighbour_score:
+                best_neighbour = neighbour
+                best_neighbour_score = neighbour_score
+        return best_neighbour
 
     @staticmethod
     def _generate_neighbourhood(project:Project, current_mode_assignment: list[int]) -> list[list[int]]:
