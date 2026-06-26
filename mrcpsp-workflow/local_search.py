@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+from schedule_generation_schemes.schedulers import SerialScheduler
+
 """Iterated first-improvement local search post-processing for MRCPSP.
 
 Seeded with the best schedule from the constructive heuristic sweep, the
@@ -33,13 +36,22 @@ import random
 import time
 
 from mrcpsp import Project, Schedule
-from sgs import _serial_schedule, _check_nonrenewable_feasibility
 from justification import justify
 from time_window_pruning import _cpm
 
 PERTURB_SWAPS = 3
 PERTURB_MODE_FLIPS = 3
 
+
+def _check_nonrenewable_feasibility(project, mode_assignments) -> bool:
+    for nr in range(project.num_nonrenewable):
+        total = sum(
+            project.activities[i].modes[mode_assignments[i]].nonrenewable_demands[nr]
+            for i in range(project.num_activities)
+        )
+        if total > project.nonrenewable_capacities[nr]:
+            return False
+    return True
 
 def _priority_list_from_schedule(schedule: Schedule, n: int) -> list[int]:
     return sorted(range(n), key=lambda i: (schedule.start_times[i], i))
@@ -58,7 +70,7 @@ def _evaluate(project: Project, priority_list: list[int],
     if not _check_nonrenewable_feasibility(project, modes):
         return None
     priorities = _list_to_priorities(priority_list)
-    sched = _serial_schedule(project, priorities, list(modes))
+    sched = SerialScheduler().fixed_mode_pass(project, priorities, list(modes))
     return justify(project, sched)
 
 

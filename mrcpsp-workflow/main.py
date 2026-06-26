@@ -9,7 +9,7 @@ import time
 import multiprocessing
 
 from mm_parser import parse_psplib
-from sgs import SGS_SCHEMES
+from schedule_generation_schemes import SGS_SCHEMES
 from priority_rules import PRIORITY_RULES, get_priority_fn
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
 from validation import ScheduleValidator

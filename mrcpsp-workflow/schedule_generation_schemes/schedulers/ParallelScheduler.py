@@ -9,7 +9,7 @@ class ParallelScheduler(Scheduler):
     def context_aware_pass(
             self,
             project: Project,
-            priorities: list[tuple[int]],
+            priorities: list[int|tuple[int]],
             mode_fn: Callable
     ) -> Schedule:
         mode_assignments = [0] * project.num_activities
@@ -18,7 +18,7 @@ class ParallelScheduler(Scheduler):
     def fixed_mode_pass(
             self,
             project: Project,
-            priorities: list[tuple[int]],
+            priorities: list[int|tuple[int]],
             mode_assignments: list[int]
     ) -> Schedule:
         return self._run(project, priorities, list(mode_assignments), mode_fn=None)
@@ -26,7 +26,7 @@ class ParallelScheduler(Scheduler):
     def _run(
             self,
             project: Project,
-            priorities: list[tuple[int]],
+            priorities: list[int|tuple[int]],
             input_mode_assignments: list[int],
             mode_fn: Callable | None
     ) -> Schedule:

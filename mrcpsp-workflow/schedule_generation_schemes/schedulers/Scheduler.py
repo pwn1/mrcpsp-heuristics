@@ -83,7 +83,7 @@ class Scheduler(ABC):
     def context_aware_pass(
             self,
             project: Project,
-            priorities: list[tuple[int]],
+            priorities: list[int|tuple[int]],
             mode_fn: Callable
     ) -> Schedule:
         ...
@@ -92,7 +92,7 @@ class Scheduler(ABC):
     def fixed_mode_pass(
             self,
             project: Project,
-            priorities: list[tuple[int]],
+            priorities: list[int|tuple[int]],
             mode_assignments: list[int]
     ) -> Schedule:
         ...
