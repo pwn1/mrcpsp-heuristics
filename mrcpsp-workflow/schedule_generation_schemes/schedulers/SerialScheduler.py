@@ -31,41 +31,31 @@ class SerialScheduler(Scheduler):
             input_mode_assignments: list[int],
             mode_fn: Callable | None
     ) -> Schedule:
-        mode_assignments = input_mode_assignments.copy()
+        state = self._set_scheduler_state(project, input_mode_assignments)
 
-        project = project
-        n = project.num_activities
-        profile = self._make_resource_profile(project.num_renewable, self._compute_horizon(project))
-        start_times = [0] * n
-        finish_times = [0] * n
-        preds = project.predecessors
-        succs = [a.successors for a in project.activities]
-        remaining = [len(p) for p in preds]
-        ready = [j for j in range(n) if remaining[j] == 0]
+        for _ in range(project.num_activities):
+            act_id = min(state.ready, key=lambda j: (priorities[j], j))
+            state.ready.remove(act_id)
 
-        for _ in range(n):
-            act_id = min(ready, key=lambda j: (priorities[j], j))
-            ready.remove(act_id)
-
-            ep = max((finish_times[p] for p in preds[act_id]), default=0)
+            ep = max((state.finish_times[p] for p in state.predecessor_list[act_id]), default=0)
 
             if mode_fn is not None:
-                mode_assignments[act_id] = mode_fn(
+                state.mode_assignments[act_id] = mode_fn(
                     activity=project.activities[act_id], project=project,
-                    resource_profile=profile, earliest_possible=ep,
+                    resource_profile=state.profile, earliest_possible=ep,
                 )
-            mode = project.activities[act_id].modes[mode_assignments[act_id]]
+            mode = project.activities[act_id].modes[state.mode_assignments[act_id]]
             st = find_earliest_feasible_start(
                 mode.duration, mode.renewable_demands,
-                project.renewable_capacities, profile, ep,
+                project.renewable_capacities, state.profile, ep,
             )
-            start_times[act_id] = st
-            finish_times[act_id] = st + mode.duration
-            self._update_resource_profile(profile, st, mode.duration, mode.renewable_demands)
+            state.start_times[act_id] = st
+            state.finish_times[act_id] = st + mode.duration
+            self._update_resource_profile(state.profile, st, mode.duration, mode.renewable_demands)
 
-            for s in succs[act_id]:
-                remaining[s] -= 1
-                if remaining[s] == 0:
-                    ready.append(s)
+            for s in project.activities[act_id].successors:
+                state.remaining[s] -= 1
+                if state.remaining[s] == 0:
+                    state.ready.append(s)
 
-        return Schedule(mode_assignments=mode_assignments, start_times=start_times, project=project)
+        return Schedule(mode_assignments=state.mode_assignments, start_times=state.start_times, project=project)

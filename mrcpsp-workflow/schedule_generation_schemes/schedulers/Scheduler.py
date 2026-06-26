@@ -1,8 +1,19 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Callable
 
 from mrcpsp import Project, Schedule
 
+@dataclass
+class SchedulerState:
+    mode_assignments : list[int]
+    horizon : int
+    profile : list[list[int]]
+    start_times : list[int]
+    finish_times : list[int]
+    predecessor_list : list[list[int]]
+    remaining : list[int]
+    ready : list[int]
 
 class Scheduler(ABC):
     @staticmethod
@@ -42,6 +53,31 @@ class Scheduler(ABC):
                 if profile[r][t + dt] + d > caps[r]:
                     return False
         return True
+
+    def _set_scheduler_state(
+            self,
+            project: Project,
+            input_mode_assignments: list[int],
+    ):
+        mode_assignments = input_mode_assignments.copy()
+        horizon = self._compute_horizon(project)
+        profile = self._make_resource_profile(project.num_renewable, horizon)
+        start_times = [0] * project.num_activities
+        finish_times = [0] * project.num_activities
+        predecessor_list = project.predecessors
+        remaining = [len(p) for p in predecessor_list]
+        ready = [j for j in range(project.num_activities) if remaining[j] == 0]
+
+        return SchedulerState(
+            mode_assignments=mode_assignments,
+            horizon=horizon,
+            profile=profile,
+            start_times=start_times,
+            finish_times=finish_times,
+            predecessor_list=predecessor_list,
+            remaining=remaining,
+            ready=ready,
+        )
 
     @abstractmethod
     def context_aware_pass(

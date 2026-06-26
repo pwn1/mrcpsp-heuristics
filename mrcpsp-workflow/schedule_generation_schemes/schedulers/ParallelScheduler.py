@@ -30,52 +30,52 @@ class ParallelScheduler(Scheduler):
             input_mode_assignments: list[int],
             mode_fn: Callable | None
     ) -> Schedule:
-        mode_assignments = input_mode_assignments.copy()
-        n = project.num_activities
-        horizon = self._compute_horizon(project)
-        profile = self._make_resource_profile(project.num_renewable, horizon)
-        start_times = [0] * n
-        finish_times = [0] * n
-        preds = project.predecessors
-        succs = [a.successors for a in project.activities]
-        remaining = [len(p) for p in preds]
-        # An activity is eligible at time t iff all preds finished by t. We track
-        # `pending`: activities with remaining=0 but possibly not yet reached by t.
-        pending = [j for j in range(n) if remaining[j] == 0]
+        state = self._set_scheduler_state(project, input_mode_assignments)
+
         num_scheduled = 0
-        caps = project.renewable_capacities
 
         t = 0
-        while num_scheduled < n:
-            eligible = [j for j in pending
-                        if all(finish_times[p] <= t for p in preds[j])]
+        while num_scheduled < project.num_activities:
+            eligible = [j for j in state.ready
+                        if all(state.finish_times[p] <= t for p in state.predecessor_list[j])]
             eligible.sort(key=lambda j: (priorities[j], j))
 
             scheduled_any = False
             for act_id in eligible:
                 if mode_fn is not None:
-                    mode_assignments[act_id] = mode_fn(
+                    state.mode_assignments[act_id] = mode_fn(
                         activity=project.activities[act_id], project=project,
-                        resource_profile=profile, earliest_possible=t,
+                        resource_profile=state.profile, earliest_possible=t,
                     )
-                mode = project.activities[act_id].modes[mode_assignments[act_id]]
-                if not self._fits_renewable(profile, caps, t, mode.duration, mode.renewable_demands):
+                mode = project.activities[act_id].modes[state.mode_assignments[act_id]]
+                if not self._fits_renewable(
+                        state.profile,
+                        project.renewable_capacities,
+                        t,
+                        mode.duration,
+                        mode.renewable_demands
+                ):
                     continue
 
-                start_times[act_id] = t
-                finish_times[act_id] = t + mode.duration
-                self._update_resource_profile(profile, t, mode.duration, mode.renewable_demands)
-                pending.remove(act_id)
-                for s in succs[act_id]:
-                    remaining[s] -= 1
-                    if remaining[s] == 0:
-                        pending.append(s)
+                state.start_times[act_id] = t
+                state.finish_times[act_id] = t + mode.duration
+                self._update_resource_profile(state.profile, t, mode.duration, mode.renewable_demands)
+                state.ready.remove(act_id)
+
+                for s in project.activities[act_id].successors:
+                    state.remaining[s] -= 1
+                    if state.remaining[s] == 0:
+                        state.ready.append(s)
                 num_scheduled += 1
                 scheduled_any = True
 
             if not scheduled_any:
                 t += 1
-                if t >= horizon:
+                if t >= state.horizon:
                     return None
 
-        return Schedule(mode_assignments=list(mode_assignments), start_times=start_times, project=project)
+        return Schedule(
+            mode_assignments=list(state.mode_assignments),
+            start_times=state.start_times,
+            project=project
+        )
