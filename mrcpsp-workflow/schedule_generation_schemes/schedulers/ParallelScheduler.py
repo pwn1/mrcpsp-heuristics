@@ -1,6 +1,6 @@
 from typing import Callable
 
-from mrcpsp import Project, Schedule
+from mrcpsp import Project, Schedule, Activity
 from schedule_generation_schemes.schedulers.Scheduler import Scheduler
 
 
@@ -72,7 +72,10 @@ class ParallelScheduler(Scheduler):
             if not scheduled_any:
                 t += 1
                 if t >= state.horizon:
-                    return None
+                    raise AssertionError(
+                        f"Project {project} failed to schedule in ParallelScheduler, "
+                        f"by producing a schedule with length longer than the horizon."
+                    )
 
         return Schedule(
             mode_assignments=list(state.mode_assignments),
