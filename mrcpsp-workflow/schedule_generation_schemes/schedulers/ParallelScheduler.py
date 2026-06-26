@@ -1,6 +1,6 @@
 from typing import Callable
 
-from mrcpsp import Project, Schedule, Activity
+from mrcpsp import Project, Schedule
 from schedule_generation_schemes.schedulers.Scheduler import Scheduler
 
 
