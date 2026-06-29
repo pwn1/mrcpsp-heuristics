@@ -8,10 +8,19 @@ from schedule_generation_schemes.ScheduleGeneratorFactory import ScheduleGenerat
 """Schedule Generation Schemes for multi-mode RCPSP.
 
 References:
-  - Kolisch (1996): Serial and parallel SGS (foundational, not on DBLP)
-  - Sprecher & Drexl (1998): Multi-mode sequencing algorithm
-  - Hartmann & Kolisch (2000), Kolisch & Hartmann (2006): experimental evaluation
-  - Lova, Tormos & Barber (2006): SGS + priority rules + mode selection for MRCPSP
+  - R. Kolisch, ‘Serial and parallel resource-constrained project 
+  scheduling methods revisited: Theory and computation’, European 
+  Journal of Operational Research, vol. 90, no. 2, pp. 320–333, 1996.
+  
+  Details pseudocode for parallel and serial scheme generation for RCPSP 
+  (which have been adapted for MRCPSP).
+  
+  - A. Lova, P. Tormos, and F. Barber, ‘Multi-mode resource constrained project scheduling:
+   Scheduling schemes, priority rules and mode selection rules’, Inteligencia Artificial. 
+   Revista Iberoamericana de Inteligencia Artificial, vol. 10, no. 30, pp. 69–86, 2006.
+   
+   Details serial and parallel scheme generation for MRCPSP, and integration
+   of these schemes with priority and mode selection rules.
 """
 
 
