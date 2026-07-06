@@ -1,4 +1,9 @@
 from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+from priority_rules.critical_path import CriticalPathMethodCalculator
+
 """Priority rules for activity ordering in schedule generation schemes.
 
 Priority rules surveyed in:
@@ -8,6 +13,8 @@ Priority rules surveyed in:
 
 Each base rule returns a list of numeric values (lower = higher priority).
 Composite rules pair a primary rule with a tie-breaker, returning tuples.
+
+All priority rules have been written in a static form, to limit complexity.
 """
 
 import random
@@ -33,80 +40,32 @@ def _compute_successors_recursive(project: Project) -> list[set[int]]:
     return all_succs
 
 
-def _topological_order(project: Project) -> list[int]:
-    """Compute a topological ordering of activities using Kahn's algorithm."""
-    n = project.num_activities
-    in_degree = [0] * n
-    for act in project.activities:
-        for s in act.successors:
-            in_degree[s] += 1
-
-    queue = [i for i in range(n) if in_degree[i] == 0]
-    order = []
-    while queue:
-        node = queue.pop(0)
-        order.append(node)
-        for s in project.activities[node].successors:
-            in_degree[s] -= 1
-            if in_degree[s] == 0:
-                queue.append(s)
-    return order
-
-
 # ---------------------------------------------------------------------------
 # Base priority rules — each returns list[numeric], lower = higher priority
 # ---------------------------------------------------------------------------
 
-def _cpm_passes(project: Project, mode_assignments: list[int]):
-    """Compute CPM forward pass (EST) and backward pass (LFT).
-
-    Returns (est, lft, durations, topo) where:
-      est[i] = earliest start time of activity i
-      lft[i] = latest finish time of activity i
-    """
-    n = project.num_activities
-    durations = [
-        project.activities[i].modes[mode_assignments[i]].duration
-        for i in range(n)
-    ]
-    est = [0] * n
-    topo = _topological_order(project)
-    for act_id in topo:
-        for s in project.activities[act_id].successors:
-            est[s] = max(est[s], est[act_id] + durations[act_id])
-    makespan_ub = max(est[i] + durations[i] for i in range(n))
-    lft = [makespan_ub] * n
-    for act_id in reversed(topo):
-        for s in project.activities[act_id].successors:
-            lft[act_id] = min(lft[act_id], lft[s] - durations[s])
-    return est, lft, durations, topo
 
 
 def _lft_values(project: Project, mode_assignments: list[int]) -> list:
-    """Latest Finish Time: LFT_j from the CPM backward pass. Lower =
-    higher priority. Classical priority rule; tabulated in Kolisch 1996
-    EJOR Table 1 (attributed there to Davis & Patterson 1975) and in
-    Lova, Tormos & Barber (2006) Table 1, where it is a top-4 rule for
-    MRCPSP under both serial and parallel SGS."""
-    _, lft, _, _ = _cpm_passes(project, mode_assignments)
-    return lft
+    return LFT.prioritise(project, mode_assignments)
 
 
 def _lst_values(project: Project, mode_assignments: list[int]) -> list:
     """Latest Start Time: LST_j = LFT_j - d_j. Lower = higher priority.
     Lova, Tormos & Barber (2006) list this among the top-4 priority rules
     for MRCPSP with the serial SGS, alongside LSTLFT, LFT, and RWK."""
-    _, lft, durations, _ = _cpm_passes(project, mode_assignments)
-    return [lft[i] - durations[i] for i in range(project.num_activities)]
+    return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_start_time
 
 
 def _lstlft_values(project: Project, mode_assignments: list[int]) -> list:
     """Combined Latest Start and Finish Time: LST_j + LFT_j = 2*LFT_j - d_j.
     Lower = higher priority. Lova, Tormos & Barber (2006) report this as the
     best single priority rule for MRCPSP with the serial SGS."""
-    _, lft, durations, _ = _cpm_passes(project, mode_assignments)
-    return [2 * lft[i] - durations[i] for i in range(project.num_activities)]
-
+    cpm_schedule = CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments)
+    return [
+        cpm_schedule.latest_start_time[i] + cpm_schedule.latest_finish_time[i]
+        for i in range(len(cpm_schedule.latest_start_time))
+    ]
 
 def _rwk_values(project: Project, **_) -> list:
     """Remaining Work (Lova et al. 2006): own shortest-mode duration plus
@@ -127,9 +86,7 @@ def _mslk_values(project: Project, mode_assignments: list[int]) -> list:
     Lower slack = more critical = higher priority.
     Hartmann & Kolisch (2000), Kolisch & Hartmann (2006).
     """
-    est, lft, durations, _ = _cpm_passes(project, mode_assignments)
-    n = project.num_activities
-    return [lft[i] - durations[i] - est[i] for i in range(n)]
+    return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).slack
 
 
 def _mts_values(project: Project, **_) -> list:
@@ -226,6 +183,22 @@ _BASE_RULES = {
     "INDEX": _index_values,
 }
 
+
+class PriorityRule(ABC):
+    @staticmethod
+    @abstractmethod
+    def prioritise(project:Project, mode_assignments: list[int]) -> list[int]:
+        pass
+
+class LFT(PriorityRule):
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        """Latest Finish Time: LFT_j from the CPM backward pass. Lower =
+        higher priority. Classical priority rule; tabulated in Kolisch 1996
+        EJOR Table 1 (attributed there to Davis & Patterson 1975) and in
+        Lova, Tormos & Barber (2006) Table 1, where it is a top-4 rule for
+        MRCPSP under both serial and parallel SGS."""
+        return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_finish_time
 
 # ---------------------------------------------------------------------------
 # Composite rule builder

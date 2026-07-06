@@ -36,6 +36,12 @@ class Project:
                 preds[succ].append(act.id)
         return preds
 
+    def durations_given_modes(self, mode_assignments:list[int]) -> list[int]:
+        return [
+            self.activities[i].modes[mode_assignments[i]].duration
+            for i in range(self.num_activities)
+        ]
+
     def seed(self) -> int:
         """Deterministic integer seed derived from the instance data
         (durations, renewable demands, non-renewable demands for every mode of
