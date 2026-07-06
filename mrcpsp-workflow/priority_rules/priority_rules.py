@@ -58,21 +58,11 @@ def _lft_values(project: Project, mode_assignments: list[int]) -> list:
 
 
 def _lst_values(project: Project, mode_assignments: list[int]) -> list:
-    """Latest Start Time: LST_j = LFT_j - d_j. Lower = higher priority.
-    Lova, Tormos & Barber (2006) list this among the top-4 priority rules
-    for MRCPSP with the serial SGS, alongside LSTLFT, LFT, and RWK."""
     return LST.prioritise(project, mode_assignments)
 
 
 def _lstlft_values(project: Project, mode_assignments: list[int]) -> list:
-    """Combined Latest Start and Finish Time: LST_j + LFT_j = 2*LFT_j - d_j.
-    Lower = higher priority. Lova, Tormos & Barber (2006) report this as the
-    best single priority rule for MRCPSP with the serial SGS."""
-    cpm_schedule = CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments)
-    return [
-        cpm_schedule.latest_start_time[i] + cpm_schedule.latest_finish_time[i]
-        for i in range(len(cpm_schedule.latest_start_time))
-    ]
+    return LSTLFT.prioritise(project, mode_assignments)
 
 def _rwk_values(project: Project, **_) -> list:
     """Remaining Work (Lova et al. 2006): own shortest-mode duration plus
@@ -232,6 +222,19 @@ class LST(PriorityRule):
     @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_start_time
+
+class LSTLFT(PriorityRule):
+    """ Lova, Tormos & Barber (2006) define LSTLFT_j = LFT_j + LST_j
+    (the sum of latest start time and latest finish time). They found
+    it to have the best performance out of 14 heuristics with both serial and
+    parallel schedule generation schemes."""
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        cpm_schedule = CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments)
+        return [
+            cpm_schedule.latest_start_time[i] + cpm_schedule.latest_finish_time[i]
+            for i in range(len(cpm_schedule.latest_start_time))
+        ]
 
 # ---------------------------------------------------------------------------
 # Composite rule builder

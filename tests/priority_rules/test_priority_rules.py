@@ -1,5 +1,5 @@
 from default_mrcpsp_resources import PROJECT
-from priority_rules import LFT, LST
+from priority_rules import LFT, LST, LSTLFT
 
 
 class TestPriorityRules:
@@ -12,4 +12,9 @@ class TestPriorityRules:
     def test_lst(self):
         expected_priorities = [0,0,1,1,2]
         actual_priorities = LST.prioritise(PROJECT,[0,0,0,0,0])
+        assert actual_priorities == expected_priorities
+
+    def test_lstlft(self):
+        expected_priorities = [0,1,3,3,4]
+        actual_priorities = LSTLFT.prioritise(PROJECT,[0,0,0,0,0])
         assert actual_priorities == expected_priorities
