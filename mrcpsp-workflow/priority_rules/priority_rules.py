@@ -15,6 +15,15 @@ Each base rule returns a list of numeric values (lower = higher priority).
 Composite rules pair a primary rule with a tie-breaker, returning tuples.
 
 All priority rules have been written in a static form, to limit complexity.
+
+References:
+-  A. Lova, P. Tormos, and F. Barber, ‘Multi-mode resource constrained project scheduling:
+   Scheduling schemes, priority rules and mode selection rules’, Inteligencia Artificial. 
+   Revista Iberoamericana de Inteligencia Artificial, vol. 10, no. 30, pp. 69–86, 2006.
+   
+-  E. W. Davis and J. H. Patterson, ‘A comparison of heuristic and optimum solutions in
+   resource-constrainedproject scheduling’, Management science, vol. 21, 
+   no. 8, pp. 944–955, 1975.
 """
 
 import random
@@ -185,6 +194,12 @@ _BASE_RULES = {
 
 
 class PriorityRule(ABC):
+    """
+    We use the convention that lower values, mean an item is higher priority.
+
+    This means, for some priority rules which are traditionally "higher is better"
+    we have to take their negation.
+    """
     @staticmethod
     @abstractmethod
     def prioritise(project:Project, mode_assignments: list[int]) -> list[int]:
@@ -193,11 +208,15 @@ class PriorityRule(ABC):
 class LFT(PriorityRule):
     @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
-        """Latest Finish Time: LFT_j from the CPM backward pass. Lower =
-        higher priority. Classical priority rule; tabulated in Kolisch 1996
-        EJOR Table 1 (attributed there to Davis & Patterson 1975) and in
-        Lova, Tormos & Barber (2006) Table 1, where it is a top-4 rule for
-        MRCPSP under both serial and parallel SGS."""
+        """
+        Lastest Finish Time: Calculated by completing a CPM (critical
+        path method) backwards pass.
+
+        Described in Davis and Patterson (1975) as being calculated by
+        "usual critical path methods", it was found by Lova, Tormos & Barber
+        (2006) to have top 3 performance out of 14 heuristics on both serial
+        and parallel schedule generation schemes.
+        """
         return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_finish_time
 
 # ---------------------------------------------------------------------------

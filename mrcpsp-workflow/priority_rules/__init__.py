@@ -1,1 +1,1 @@
-from .priority_rules import LFT
+from .priority_rules import LFT, get_priority_fn, PRIORITY_RULES
