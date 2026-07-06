@@ -53,8 +53,6 @@ def _compute_successors_recursive(project: Project) -> list[set[int]]:
 # Base priority rules — each returns list[numeric], lower = higher priority
 # ---------------------------------------------------------------------------
 
-
-
 def _lft_values(project: Project, mode_assignments: list[int]) -> list:
     return LFT.prioritise(project, mode_assignments)
 
@@ -63,7 +61,7 @@ def _lst_values(project: Project, mode_assignments: list[int]) -> list:
     """Latest Start Time: LST_j = LFT_j - d_j. Lower = higher priority.
     Lova, Tormos & Barber (2006) list this among the top-4 priority rules
     for MRCPSP with the serial SGS, alongside LSTLFT, LFT, and RWK."""
-    return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_start_time
+    return LST.prioritise(project, mode_assignments)
 
 
 def _lstlft_values(project: Project, mode_assignments: list[int]) -> list:
@@ -206,18 +204,34 @@ class PriorityRule(ABC):
         pass
 
 class LFT(PriorityRule):
+    """ Lastest Finish Time: Calculated by completing a CPM (critical
+    path method) backwards pass.
+
+    Described in Davis and Patterson (1975) as being calculated by
+    "usual critical path methods", it was found by Lova, Tormos & Barber
+    (2006) to be in the top 3 best performing heuristics out of 14
+    heuristics on both serial and parallel schedule generation schemes. """
+
     @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
-        """
-        Lastest Finish Time: Calculated by completing a CPM (critical
-        path method) backwards pass.
-
-        Described in Davis and Patterson (1975) as being calculated by
-        "usual critical path methods", it was found by Lova, Tormos & Barber
-        (2006) to have top 3 performance out of 14 heuristics on both serial
-        and parallel schedule generation schemes.
-        """
         return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_finish_time
+
+class LST(PriorityRule):
+    """
+    Described in Davis and Patterson (1975) as being calculated by critical path
+    methods, it was found by Lova, Tormos & Barber (2006) to be in the top 3
+    best performing heuristics out of 14 heuristics on both serial and parallel
+    schedule generation schemes.
+
+    It is of course related to LFT as LST_j = LFT_j - d_j (where d_j is the
+    duration of task j).
+
+    Note: As Davis and Patterson (1975) prove, this is equivalent to the MINSLACK
+    (minimum slack) priority rule when using parallel schedule generation.
+    """
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_start_time
 
 # ---------------------------------------------------------------------------
 # Composite rule builder
