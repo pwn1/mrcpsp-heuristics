@@ -76,12 +76,8 @@ def _spt_values(project: Project, mode_assignments: list[int]) -> list:
     return SPT.prioritise(project, mode_assignments)
 
 
-def _mis_values(project: Project, **_) -> list:
-    """Most Immediate Successors: count of direct successors. Higher =
-    higher priority (negated). Called NIS in Lova, Tormos & Barber (2006)
-    Table 1."""
-    return [-len(project.activities[i].successors)
-            for i in range(project.num_activities)]
+def _mis_values(project: Project, mode_assignments) -> list:
+    return NIS.prioritise(project, mode_assignments)
 
 
 def _grd_values(project: Project, mode_assignments: list[int]) -> list:
@@ -329,6 +325,18 @@ class SPT(PriorityRule):
     @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         return project.durations_given_modes(mode_assignments)
+
+class NIS(PriorityRule):
+    """ Defined as number of immediate successors by Lova, Tormos & Barber (2006)
+    Table 1.
+    We negate the value to fit with lower=higher priority convention.
+    """
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        return [
+            -len(project.activities[i].successors)
+            for i in range(project.num_activities)
+        ]
 
 # ---------------------------------------------------------------------------
 # Composite rule builder
