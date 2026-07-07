@@ -49,12 +49,7 @@ def _rwk_values(project: Project, mode_assignments) -> list:
 
 
 def _mslk_values(project: Project, mode_assignments: list[int]) -> list:
-    """Minimum Slack: slack = LST - EST = (LFT - duration) - EST.
-
-    Lower slack = more critical = higher priority.
-    Hartmann & Kolisch (2000), Kolisch & Hartmann (2006).
-    """
-    return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).slack
+    return MSLK.prioritise(project, mode_assignments)
 
 
 def _mts_values(project: Project, **_) -> list:
@@ -258,6 +253,21 @@ class RWK(PriorityRule):
             -(durations[i] + sum(durations[s] for s in all_successors[i]))
             for i in range(project.num_activities)
         ]
+
+class MSLK(PriorityRule):
+    """ Davis & Patterson (1975) define minimum job slack (MSLK) as "the difference
+    between the critical path analysis-determined Late Start Time (LST) and Early Start
+    Time (EST)." It is one of the 14 heuristics Lova, Tormos & Barber (2006) consider,
+    and produces the 6th best result on average out of 14 heuristics for both serial and
+    parallel schedule generation schemes.
+    """
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        return (
+            CriticalPathMethodCalculator
+                .get_cpm_schedule(project, mode_assignments)
+                .slack
+        )
 
 # ---------------------------------------------------------------------------
 # Composite rule builder
