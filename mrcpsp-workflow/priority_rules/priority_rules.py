@@ -52,7 +52,8 @@ def _lst_values(project: Project, mode_assignments: list[int]) -> list:
 def _lstlft_values(project: Project, mode_assignments: list[int]) -> list:
     return LSTLFT.prioritise(project, mode_assignments)
 
-def _rwk_values(project: Project, mode_assignments) -> list:
+
+def _rwk_values(project: Project, mode_assignments: list[int]) -> list:
     return RWK.prioritise(project, mode_assignments)
 
 
@@ -60,8 +61,8 @@ def _mslk_values(project: Project, mode_assignments: list[int]) -> list:
     return MSLK.prioritise(project, mode_assignments)
 
 
-def _mts_values(project: Project, **_) -> list:
-    return MTS.prioritise(project, **_)
+def _mts_values(project: Project, mode_assignments: list[int]) -> list:
+    return MTS.prioritise(project, mode_assignments)
 
 
 def _grpw_values(project: Project, mode_assignments: list[int]) -> list:
@@ -76,22 +77,16 @@ def _spt_values(project: Project, mode_assignments: list[int]) -> list:
     return SPT.prioritise(project, mode_assignments)
 
 
-def _mis_values(project: Project, mode_assignments) -> list:
+def _mis_values(project: Project, mode_assignments: list[int]) -> list:
     return NIS.prioritise(project, mode_assignments)
 
 
 def _grd_values(project: Project, mode_assignments: list[int]) -> list:
-    """Greatest Resource Demand: d_j * sum of renewable demands.
-    Lova, Tormos & Barber (2006) Table 1. Lower = higher priority (negated)."""
-    return [
-        -(project.activities[i].modes[mode_assignments[i]].duration *
-          sum(project.activities[i].modes[mode_assignments[i]].renewable_demands))
-        for i in range(project.num_activities)
-    ]
+    return GRD.prioritise(project, mode_assignments)
 
 
-def _index_values(project: Project, **_) -> list:
-    return list(range(project.num_activities))
+def _index_values(project: Project, mode_assignments: list[int]) -> list:
+    return AN.prioritise(project, mode_assignments)
 
 
 _BASE_RULES = {
@@ -265,27 +260,6 @@ class MTS(PriorityRule):
         all_successors = PriorityRule._compute_successors_recursive(project)
         return [-len(s) for s in all_successors]
 
-def _wrup_values(project: Project, mode_assignments: list[int]) -> list:
-    """Weighted Resource Utilisation Ratio and Precedence.
-
-    Ulusoy & Özdamar (1989), as tabulated by Kolisch (1996) EJOR Table 1:
-      WRUP(j) = 0.7 * |S_j| + 0.3 * sum_{r in renewable} k_jr / K_r
-    where S_j is the set of immediate successors and the resource sum is over
-    renewable resources only. Higher WRUP = higher priority (negated here for
-    the lower-is-better convention).
-    """
-    n = project.num_activities
-    caps = project.renewable_capacities
-    result = []
-    for i in range(n):
-        mode = project.activities[i].modes[mode_assignments[i]]
-        num_succ = len(project.activities[i].successors)
-        demand_ratio = sum(
-            d / c for d, c in zip(mode.renewable_demands, caps) if c > 0
-        )
-        result.append(-(0.7 * num_succ + 0.3 * demand_ratio))
-    return result
-
 class WRUP(PriorityRule):
     """Weighted Resource Utilisation Ratio and Precedence (WRUP) is tabulated in
     Kolisch (1996) Table 1, and presented in Ulusoy & Özdamar (1989).
@@ -337,6 +311,29 @@ class NIS(PriorityRule):
             -len(project.activities[i].successors)
             for i in range(project.num_activities)
         ]
+
+
+class GRD(PriorityRule):
+    """ Greatest resource demand (GRD) defined in Lova, Tormos & Barber (2006)
+    Table 1. Calculated as the product of the activity duration and sum of
+    renewable resource requirements.
+    """
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        priorities = []
+        for activity_index in range (project.num_activities):
+            mode = project.activities[activity_index].modes[mode_assignments[activity_index]]
+            priority = -(mode.duration*sum(mode.renewable_demands))
+            priorities.append(priority)
+        return priorities
+
+class AN(PriorityRule):
+    """ Uses the activity number as the priority of the task, defined in Lova,
+    Tormos & Barber (2006) Table 1.
+    """
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        return list(range(project.num_activities))
 
 # ---------------------------------------------------------------------------
 # Composite rule builder
