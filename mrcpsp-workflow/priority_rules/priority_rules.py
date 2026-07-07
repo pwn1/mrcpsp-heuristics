@@ -61,20 +61,7 @@ def _mts_values(project: Project, **_) -> list:
 
 
 def _grpw_values(project: Project, mode_assignments: list[int]) -> list:
-    """Greatest Rank Positional Weight: d_j + sum of immediate successor
-    durations. Kolisch 1996 EJOR Table 1 (attributed there to
-    Alvarez-Valdes & Tamarit 1989); also Lova, Tormos & Barber (2006)
-    Table 1. Higher = higher priority (negated for lower-is-better
-    convention). Lova computes this with shortest-mode durations; we
-    use current-mode."""
-    durations = [
-        project.activities[i].modes[mode_assignments[i]].duration
-        for i in range(project.num_activities)
-    ]
-    return [
-        -(durations[i] + sum(durations[s] for s in project.activities[i].successors))
-        for i in range(project.num_activities)
-    ]
+    return GRPW.prioritise(project, mode_assignments)
 
 
 def _wrup_values(project: Project, mode_assignments: list[int]) -> list:
@@ -253,6 +240,26 @@ class RWK(PriorityRule):
             -(durations[i] + sum(durations[s] for s in all_successors[i]))
             for i in range(project.num_activities)
         ]
+
+
+class GRPW(PriorityRule):
+    """Similar to RWK, greatest rank positional weight (GRPW) is defined
+    as being the sum of duration of an activity and all its immediate
+    successors by Lova, Tormos & Barber (2006). Similar to RWK, we
+    calculate it using the actual mode assignments, and not the
+    minimum mode assignments.
+
+    Similar to RWK, we have to negate the result to fit the lower-is-better
+    convention.
+    """
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        durations = project.durations_given_modes(mode_assignments)
+        return [
+            -(durations[i] + sum(durations[s] for s in project.activities[i].successors))
+            for i in range(project.num_activities)
+        ]
+
 
 class MSLK(PriorityRule):
     """ Davis & Patterson (1975) define minimum job slack (MSLK) as "the difference
