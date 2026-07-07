@@ -18,6 +18,10 @@ class RWK(PriorityHeuristic):
     therefore we have to negate the values to fit the lower-is-better
     convention."""
     @staticmethod
+    def get_name() -> str:
+        return "RWK"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         all_successors = PriorityHeuristic._compute_successors_recursive(project)
 

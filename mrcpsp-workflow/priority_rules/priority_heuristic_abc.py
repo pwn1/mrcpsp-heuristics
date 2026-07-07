@@ -12,6 +12,11 @@ class PriorityHeuristic(ABC):
     """
     @staticmethod
     @abstractmethod
+    def get_name() -> str:
+        pass
+
+    @staticmethod
+    @abstractmethod
     def prioritise(project:Project, mode_assignments: list[int]) -> list[int]:
         pass
 

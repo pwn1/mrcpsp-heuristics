@@ -11,6 +11,10 @@ class MSLK(PriorityHeuristic):
     parallel schedule generation schemes.
     """
     @staticmethod
+    def get_name() -> str:
+        return "MSLK"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         return (
             CriticalPathMethodCalculator

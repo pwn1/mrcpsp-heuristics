@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from .heuristics import *
+from .priority_heuristic_abc import PriorityHeuristic
+
 """Priority rules for activity ordering in schedule generation schemes.
 
 Priority rules surveyed in:
@@ -35,122 +37,42 @@ import random
 from mrcpsp import Project
 
 # ---------------------------------------------------------------------------
-# Base priority rules — each returns list[numeric], lower = higher priority
-# ---------------------------------------------------------------------------
-
-def _lft_values(project: Project, mode_assignments: list[int]) -> list:
-    return LFT.prioritise(project, mode_assignments)
-
-
-def _lst_values(project: Project, mode_assignments: list[int]) -> list:
-    return LST.prioritise(project, mode_assignments)
-
-
-def _lstlft_values(project: Project, mode_assignments: list[int]) -> list:
-    return LSTLFT.prioritise(project, mode_assignments)
-
-
-def _rwk_values(project: Project, mode_assignments: list[int]) -> list:
-    return RWK.prioritise(project, mode_assignments)
-
-
-def _mslk_values(project: Project, mode_assignments: list[int]) -> list:
-    return MSLK.prioritise(project, mode_assignments)
-
-
-def _mts_values(project: Project, mode_assignments: list[int]) -> list:
-    return MTS.prioritise(project, mode_assignments)
-
-
-def _grpw_values(project: Project, mode_assignments: list[int]) -> list:
-    return GRPW.prioritise(project, mode_assignments)
-
-
-def _wrup_values(project: Project, mode_assignments: list[int]) -> list:
-    return WRUP.prioritise(project, mode_assignments)
-
-
-def _spt_values(project: Project, mode_assignments: list[int]) -> list:
-    return SPT.prioritise(project, mode_assignments)
-
-
-def _mis_values(project: Project, mode_assignments: list[int]) -> list:
-    return NIS.prioritise(project, mode_assignments)
-
-
-def _grd_values(project: Project, mode_assignments: list[int]) -> list:
-    return GRD.prioritise(project, mode_assignments)
-
-
-def _index_values(project: Project, mode_assignments: list[int]) -> list:
-    return AN.prioritise(project, mode_assignments)
-
-
-_BASE_RULES = {
-    "LFT": _lft_values,
-    "LST": _lst_values,
-    "LSTLFT": _lstlft_values,
-    "MSLK": _mslk_values,
-    "MTS": _mts_values,
-    "GRPW": _grpw_values,
-    "WRUP": _wrup_values,
-    "RWK": _rwk_values,
-    "SPT": _spt_values,
-    "MIS": _mis_values,
-    "GRD": _grd_values,
-    "INDEX": _index_values,
-}
-
-# ---------------------------------------------------------------------------
 # Composite rule builder
 # ---------------------------------------------------------------------------
 
-def make_composite_rule(primary_name: str, tiebreak_name: str):
-    """Build a priority function that uses primary_name as the main rule
-    and tiebreak_name to break ties. Returns tuples for lexicographic sort."""
-    primary_fn = _BASE_RULES[primary_name]
-    tiebreak_fn = _BASE_RULES[tiebreak_name]
+class CompositeRule:
+    def __init__(
+            self,
+            primary_heuristic:PriorityHeuristic,
+            tiebreak_heuristic:PriorityHeuristic
+    ):
+        self._primary_heuristic = primary_heuristic
+        self._tiebreak_heuristic = tiebreak_heuristic
 
-    def composite(project: Project, mode_assignments: list[int] = None, **kw) -> list:
-        kw["project"] = project
-        if mode_assignments is not None:
-            kw["mode_assignments"] = mode_assignments
-        return list(zip(primary_fn(**kw), tiebreak_fn(**kw)))
-
-    return composite
+    def return_composite_func(self):
+        def composite(project: Project, mode_assignments: list[int]) -> list:
+            return list(zip(
+                self._primary_heuristic.prioritise(project,mode_assignments),
+                self._tiebreak_heuristic.prioritise(project,mode_assignments)
+            ))
+        return composite
 
 
 # ---------------------------------------------------------------------------
 # Build the full registry
 # ---------------------------------------------------------------------------
 
-_PRIMARY_NAMES = ["LFT", "LST", "LSTLFT", "MSLK", "MTS", "GRPW", "WRUP", "RWK",
-                  "SPT", "MIS", "GRD"]
-_TIEBREAK_NAMES = ["LFT", "LST", "LSTLFT", "MSLK", "MTS", "GRPW", "WRUP", "RWK",
-                   "SPT", "MIS", "GRD"]
-
-PRIORITY_RULES = {}
-for p in _PRIMARY_NAMES:
-    for t in _TIEBREAK_NAMES:
-        if p == t:
-            continue
-        PRIORITY_RULES[f"{p}/{t}"] = make_composite_rule(p, t)
-
+HEURISTIC_LIST = [AN, GRD, GRPW, LFT, LST, LSTLFT, MSLK, MTS, NIS, RWK, SPT, WRUP]
 
 # ---------------------------------------------------------------------------
 # Random priority rule (placeholder + seeded factory)
 # ---------------------------------------------------------------------------
-
-def _random_priority_placeholder(project: Project, **_) -> list:
-    """Placeholder — should not be called directly; use get_priority_fn()."""
-    raise RuntimeError(
-        "random priority called without seeding; use get_priority_fn() to "
-        "obtain a properly seeded random priority function"
-    )
-
-
-PRIORITY_RULES["random"] = _random_priority_placeholder
-
+PRIORITY_RULES = {}
+for p in HEURISTIC_LIST:
+    for t in HEURISTIC_LIST:
+        if p==t:
+            continue
+        PRIORITY_RULES[f'{p.get_name()}/{t.get_name()}'] = CompositeRule(p,t).return_composite_func()
 
 def make_random_priority(seed: int):
     """Create a random priority function with a local, deterministically seeded RNG.
@@ -163,7 +85,6 @@ def make_random_priority(seed: int):
         return [rng.random() for _ in range(project.num_activities)]
 
     return _random_priority
-
 
 def get_priority_fn(pr_name: str, project, sgs_name: str, mr_name: str):
     """Get a priority function for the given combo.

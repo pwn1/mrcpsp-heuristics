@@ -10,6 +10,10 @@ class MTS(PriorityHeuristic):
     with the lower=higher priority convention.
     """
     @staticmethod
+    def get_name() -> str:
+        return "MTS"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         all_successors = PriorityHeuristic._compute_successors_recursive(project)
         return [-len(s) for s in all_successors]

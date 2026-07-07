@@ -12,6 +12,10 @@ class GRPW(PriorityHeuristic):
     convention.
     """
     @staticmethod
+    def get_name() -> str:
+        return "GRPW"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         durations = project.durations_given_modes(mode_assignments)
         return [

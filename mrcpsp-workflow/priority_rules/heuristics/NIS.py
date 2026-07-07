@@ -7,6 +7,10 @@ class NIS(PriorityHeuristic):
     We negate the value to fit with lower=higher priority convention.
     """
     @staticmethod
+    def get_name() -> str:
+        return "MIS"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         return [
             -len(project.activities[i].successors)

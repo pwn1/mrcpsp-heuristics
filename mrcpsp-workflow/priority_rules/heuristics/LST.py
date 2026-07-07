@@ -17,5 +17,9 @@ class LST(PriorityHeuristic):
     (minimum slack) priority rule when using parallel schedule generation.
     """
     @staticmethod
+    def get_name() -> str:
+        return "LST"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         return CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments).latest_start_time

@@ -11,6 +11,9 @@ class LFT(PriorityHeuristic):
     "usual critical path methods", it was found by Lova, Tormos & Barber
     (2006) to be in the top 3 best performing heuristics out of 14
     heuristics on both serial and parallel schedule generation schemes. """
+    @staticmethod
+    def get_name() -> str:
+        return "LFT"
 
     @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:

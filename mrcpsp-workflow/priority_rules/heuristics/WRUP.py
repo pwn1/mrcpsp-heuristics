@@ -11,6 +11,10 @@ class WRUP(PriorityHeuristic):
     Similarly to previous heuristics, we negate the value to fit with lower=higher
     priority convention.
     """
+    @staticmethod
+    def get_name() -> str:
+        return "WRUP"
+
 
     PRECEDENCE_WEIGHT = 0.7
     RESOURCE_UTILIZATION_WEIGHT = 1 - PRECEDENCE_WEIGHT

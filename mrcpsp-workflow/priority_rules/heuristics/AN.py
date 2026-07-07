@@ -6,5 +6,9 @@ class AN(PriorityHeuristic):
     Tormos & Barber (2006) Table 1.
     """
     @staticmethod
+    def get_name() -> str:
+        return "AN"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         return list(range(project.num_activities))

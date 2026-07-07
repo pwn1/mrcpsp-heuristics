@@ -7,5 +7,9 @@ class SPT(PriorityHeuristic):
     whereas in this implementation we use the duration of the provided mode
     assignment."""
     @staticmethod
+    def get_name() -> str:
+        return "SPT"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         return project.durations_given_modes(mode_assignments)

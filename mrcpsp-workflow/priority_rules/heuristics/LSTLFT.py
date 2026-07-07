@@ -8,6 +8,10 @@ class LSTLFT(PriorityHeuristic):
     it to have the best performance out of 14 heuristics with both serial and
     parallel schedule generation schemes."""
     @staticmethod
+    def get_name() -> str:
+        return "LSTLFT"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         cpm_schedule = CriticalPathMethodCalculator.get_cpm_schedule(project, mode_assignments)
         return [

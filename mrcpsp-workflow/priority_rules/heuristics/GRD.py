@@ -7,6 +7,10 @@ class GRD(PriorityHeuristic):
     renewable resource requirements.
     """
     @staticmethod
+    def get_name() -> str:
+        return "GRD"
+
+    @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         priorities = []
         for activity_index in range (project.num_activities):
