@@ -1,7 +1,5 @@
 from default_mrcpsp_resources import PROJECT
-from priority_rules import LFT, LST, LSTLFT, RWK, MSLK, MTS, GRPW
-from priority_rules.priority_rules import WRUP, SPT, NIS, GRD, AN
-
+from priority_rules.heuristics import AN, GRD, GRPW, LFT, LST, LSTLFT, MSLK, MTS, NIS, RWK, SPT, WRUP
 
 class TestPriorityRules:
     def test_lft(self):
