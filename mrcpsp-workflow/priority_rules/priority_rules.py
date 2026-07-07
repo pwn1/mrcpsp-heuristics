@@ -44,17 +44,8 @@ def _lst_values(project: Project, mode_assignments: list[int]) -> list:
 def _lstlft_values(project: Project, mode_assignments: list[int]) -> list:
     return LSTLFT.prioritise(project, mode_assignments)
 
-def _rwk_values(project: Project, **_) -> list:
-    """Remaining Work (Lova et al. 2006): own shortest-mode duration plus
-    shortest-mode durations of all transitive successors. Higher = higher
-    priority (negated for lower-is-better convention). Distinct from GRPW,
-    which uses current-mode durations rather than shortest-mode."""
-    all_succs = PriorityRule._compute_successors_recursive(project)
-    min_dur = [min(m.duration for m in a.modes) for a in project.activities]
-    return [
-        -(min_dur[i] + sum(min_dur[s] for s in all_succs[i]))
-        for i in range(project.num_activities)
-    ]
+def _rwk_values(project: Project, mode_assignments) -> list:
+    return RWK.prioritise(project, mode_assignments)
 
 
 def _mslk_values(project: Project, mode_assignments: list[int]) -> list:
