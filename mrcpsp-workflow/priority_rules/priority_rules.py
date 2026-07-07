@@ -71,14 +71,9 @@ def _grpw_values(project: Project, mode_assignments: list[int]) -> list:
 def _wrup_values(project: Project, mode_assignments: list[int]) -> list:
     return WRUP.prioritise(project, mode_assignments)
 
+
 def _spt_values(project: Project, mode_assignments: list[int]) -> list:
-    """Shortest Processing Time: activity duration. Lower = higher
-    priority. Lova, Tormos & Barber (2006) Table 1 (computed there with
-    shortest-mode durations; we use current-mode)."""
-    return [
-        project.activities[i].modes[mode_assignments[i]].duration
-        for i in range(project.num_activities)
-    ]
+    return SPT.prioritise(project, mode_assignments)
 
 
 def _mis_values(project: Project, **_) -> list:
@@ -325,6 +320,15 @@ class WRUP(PriorityRule):
             )
             priorities.append(-priority_value)
         return priorities
+
+class SPT(PriorityRule):
+    """Shortest Processing Time (SPT) is defined in Lova, Tormos & Barber (2006)
+    in Table 1. Lova, Tormos & Barber (2006) take the shortest mode duration,
+    whereas in this implementation we use the duration of the provided mode
+    assignment."""
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        return project.durations_given_modes(mode_assignments)
 
 # ---------------------------------------------------------------------------
 # Composite rule builder
