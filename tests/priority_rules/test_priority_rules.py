@@ -1,5 +1,6 @@
 from default_mrcpsp_resources import PROJECT
 from priority_rules import LFT, LST, LSTLFT, RWK, MSLK, MTS, GRPW
+from priority_rules.priority_rules import WRUP
 
 
 class TestPriorityRules:
@@ -44,4 +45,9 @@ class TestPriorityRules:
     def test_mts(self):
         expected_priorities = [-4,-3,-1,-1,-0]
         actual_priorities = MTS.prioritise(PROJECT,[0,0,0,0,0])
+        assert actual_priorities == expected_priorities
+
+    def test_wrup(self):
+        expected_priorities = [-0.7,-2,-1.3,-1.3,0]
+        actual_priorities = WRUP.prioritise(PROJECT,[0,0,0,0,0])
         assert actual_priorities == expected_priorities

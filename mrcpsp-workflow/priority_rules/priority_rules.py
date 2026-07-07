@@ -28,6 +28,10 @@ References:
 -  R. Kolisch, ‘Serial and parallel resource-constrained project scheduling methods 
    revisited: Theory and computation’, European Journal of Operational Research, 
    vol. 90, no. 2, pp. 320–333, 1996.
+   
+-  G. Ulusoy and L. Özdamar, ‘Heuristic Performance and Network/Resource Characteristics in
+   Resource-Constrained Project Scheduling’, The Journal of the Operational Research Society,
+   vol. 40, no. 12, pp. 1145–1152, 1989.
 """
 
 import random
@@ -65,26 +69,7 @@ def _grpw_values(project: Project, mode_assignments: list[int]) -> list:
 
 
 def _wrup_values(project: Project, mode_assignments: list[int]) -> list:
-    """Weighted Resource Utilisation Ratio and Precedence.
-
-    Ulusoy & Özdamar (1989), as tabulated by Kolisch (1996) EJOR Table 1:
-      WRUP(j) = 0.7 * |S_j| + 0.3 * sum_{r in renewable} k_jr / K_r
-    where S_j is the set of immediate successors and the resource sum is over
-    renewable resources only. Higher WRUP = higher priority (negated here for
-    the lower-is-better convention).
-    """
-    n = project.num_activities
-    caps = project.renewable_capacities
-    result = []
-    for i in range(n):
-        mode = project.activities[i].modes[mode_assignments[i]]
-        num_succ = len(project.activities[i].successors)
-        demand_ratio = sum(
-            d / c for d, c in zip(mode.renewable_demands, caps) if c > 0
-        )
-        result.append(-(0.7 * num_succ + 0.3 * demand_ratio))
-    return result
-
+    return WRUP.prioritise(project, mode_assignments)
 
 def _spt_values(project: Project, mode_assignments: list[int]) -> list:
     """Shortest Processing Time: activity duration. Lower = higher
@@ -288,6 +273,58 @@ class MTS(PriorityRule):
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
         all_successors = PriorityRule._compute_successors_recursive(project)
         return [-len(s) for s in all_successors]
+
+def _wrup_values(project: Project, mode_assignments: list[int]) -> list:
+    """Weighted Resource Utilisation Ratio and Precedence.
+
+    Ulusoy & Özdamar (1989), as tabulated by Kolisch (1996) EJOR Table 1:
+      WRUP(j) = 0.7 * |S_j| + 0.3 * sum_{r in renewable} k_jr / K_r
+    where S_j is the set of immediate successors and the resource sum is over
+    renewable resources only. Higher WRUP = higher priority (negated here for
+    the lower-is-better convention).
+    """
+    n = project.num_activities
+    caps = project.renewable_capacities
+    result = []
+    for i in range(n):
+        mode = project.activities[i].modes[mode_assignments[i]]
+        num_succ = len(project.activities[i].successors)
+        demand_ratio = sum(
+            d / c for d, c in zip(mode.renewable_demands, caps) if c > 0
+        )
+        result.append(-(0.7 * num_succ + 0.3 * demand_ratio))
+    return result
+
+class WRUP(PriorityRule):
+    """Weighted Resource Utilisation Ratio and Precedence (WRUP) is tabulated in
+    Kolisch (1996) Table 1, and presented in Ulusoy & Özdamar (1989).
+
+    It is calculated by taking the weighted sum of the number of immediate successor
+    activities, and the resource demand ratio.
+
+    Similarly to previous heuristics, we negate the value to fit with lower=higher
+    priority convention.
+    """
+
+    PRECEDENCE_WEIGHT = 0.7
+    RESOURCE_UTILIZATION_WEIGHT = 1 - PRECEDENCE_WEIGHT
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        priorities = []
+        for activity_index in range (project.num_activities):
+            mode = project.activities[activity_index].modes[mode_assignments[activity_index]]
+            num_immediate_successors = len(project.activities[activity_index].successors)
+            resource_demand_ratio = sum(
+                demand/total
+                for demand, total in zip(mode.renewable_demands, project.renewable_capacities)
+                if total>0
+            )
+            priority_value = (
+                    WRUP.PRECEDENCE_WEIGHT * num_immediate_successors +
+                    WRUP.RESOURCE_UTILIZATION_WEIGHT * resource_demand_ratio
+            )
+            priorities.append(-priority_value)
+        return priorities
 
 # ---------------------------------------------------------------------------
 # Composite rule builder
