@@ -1,6 +1,6 @@
 from default_mrcpsp_resources import PROJECT
 from priority_rules import LFT, LST, LSTLFT
-from priority_rules.priority_rules import RWK, MSLK
+from priority_rules.priority_rules import RWK, MSLK, MTS
 
 
 class TestPriorityRules:
@@ -35,4 +35,9 @@ class TestPriorityRules:
     def test_mslk_with_slack(self):
         expected_priorities = [0,0,0,1,0]
         actual_priorities = MSLK.prioritise(PROJECT,[0,0,1,0,0])
+        assert actual_priorities == expected_priorities
+
+    def test_mts(self):
+        expected_priorities = [-4,-3,-1,-1,-0]
+        actual_priorities = MTS.prioritise(PROJECT,[0,0,0,0,0])
         assert actual_priorities == expected_priorities

@@ -24,6 +24,10 @@ References:
 -  E. W. Davis and J. H. Patterson, ‘A comparison of heuristic and optimum solutions in
    resource-constrainedproject scheduling’, Management science, vol. 21, 
    no. 8, pp. 944–955, 1975.
+   
+-  R. Kolisch, ‘Serial and parallel resource-constrained project scheduling methods 
+   revisited: Theory and computation’, European Journal of Operational Research, 
+   vol. 90, no. 2, pp. 320–333, 1996.
 """
 
 import random
@@ -53,11 +57,7 @@ def _mslk_values(project: Project, mode_assignments: list[int]) -> list:
 
 
 def _mts_values(project: Project, **_) -> list:
-    """Most Total Successors: count of transitive successors. Higher =
-    higher priority (negated). Kolisch 1996 EJOR Table 1, attributed
-    there to Alvarez-Valdes & Tamarit (1989)."""
-    all_succs = PriorityRule._compute_successors_recursive(project)
-    return [-len(s) for s in all_succs]
+    return MTS.prioritise(project, **_)
 
 
 def _grpw_values(project: Project, mode_assignments: list[int]) -> list:
@@ -268,6 +268,19 @@ class MSLK(PriorityRule):
                 .get_cpm_schedule(project, mode_assignments)
                 .slack
         )
+
+class MTS(PriorityRule):
+    """ Kolisch (1996) defines most total successors (MTS) as the total
+    number of transitive successors an activity has. This definition is
+    found in Table 1, with attribution to Alvarez-Valdes and Tamarit (1989).
+
+    More total successors is defined as better, however we negate this to fit
+    with the lower=higher priority convention.
+    """
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        all_successors = PriorityRule._compute_successors_recursive(project)
+        return [-len(s) for s in all_successors]
 
 # ---------------------------------------------------------------------------
 # Composite rule builder
