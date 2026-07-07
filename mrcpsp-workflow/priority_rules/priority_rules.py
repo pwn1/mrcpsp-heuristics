@@ -29,26 +29,6 @@ References:
 import random
 from mrcpsp import Project
 
-
-def _compute_successors_recursive(project: Project) -> list[set[int]]:
-    """Compute the transitive closure of successors for each activity."""
-    all_succs = [None] * project.num_activities
-
-    def _get(act_id: int) -> set[int]:
-        if all_succs[act_id] is not None:
-            return all_succs[act_id]
-        result = set()
-        for s in project.activities[act_id].successors:
-            result.add(s)
-            result |= _get(s)
-        all_succs[act_id] = result
-        return result
-
-    for a in range(project.num_activities):
-        _get(a)
-    return all_succs
-
-
 # ---------------------------------------------------------------------------
 # Base priority rules — each returns list[numeric], lower = higher priority
 # ---------------------------------------------------------------------------
@@ -69,7 +49,7 @@ def _rwk_values(project: Project, **_) -> list:
     shortest-mode durations of all transitive successors. Higher = higher
     priority (negated for lower-is-better convention). Distinct from GRPW,
     which uses current-mode durations rather than shortest-mode."""
-    all_succs = _compute_successors_recursive(project)
+    all_succs = PriorityRule._compute_successors_recursive(project)
     min_dur = [min(m.duration for m in a.modes) for a in project.activities]
     return [
         -(min_dur[i] + sum(min_dur[s] for s in all_succs[i]))
@@ -90,7 +70,7 @@ def _mts_values(project: Project, **_) -> list:
     """Most Total Successors: count of transitive successors. Higher =
     higher priority (negated). Kolisch 1996 EJOR Table 1, attributed
     there to Alvarez-Valdes & Tamarit (1989)."""
-    all_succs = _compute_successors_recursive(project)
+    all_succs = PriorityRule._compute_successors_recursive(project)
     return [-len(s) for s in all_succs]
 
 
@@ -193,6 +173,31 @@ class PriorityRule(ABC):
     def prioritise(project:Project, mode_assignments: list[int]) -> list[int]:
         pass
 
+    @staticmethod
+    def _compute_successors_recursive(project: Project) -> list[set[int]]:
+        """Compute the transitive closure of successors for each activity."""
+        all_successors: list[set[int] | None] = [None] * project.num_activities
+
+        def _get(act_id: int) -> set[int]:
+            cached = all_successors[act_id]
+            if cached is not None:
+                return cached
+
+            result = set()
+            for s in project.activities[act_id].successors:
+                result.add(s)
+                result |= _get(s)
+
+            all_successors[act_id] = result
+            return result
+
+        for a in range(project.num_activities):
+            _get(a)
+
+        # By now every slot has been filled in, so this is safe.
+        return [s if s is not None else set() for s in all_successors]
+
+
 class LFT(PriorityRule):
     """ Lastest Finish Time: Calculated by completing a CPM (critical
     path method) backwards pass.
@@ -234,6 +239,33 @@ class LSTLFT(PriorityRule):
         return [
             cpm_schedule.latest_start_time[i] + cpm_schedule.latest_finish_time[i]
             for i in range(len(cpm_schedule.latest_start_time))
+        ]
+
+class RWK(PriorityRule):
+    """ Lova, Tormos & Barber (2006) define Maximum Remaining Work (RWK)
+    as "the sum of the [...] duration of the activity and all
+    its [transitive] successors".
+
+    In Lova, Tormos & Barber (2006), they compute this heuristic using
+    the shortest duration mode for each activity. We however, use the
+    current-mode durations. For context-aware assignment, this means the first
+    pass will be the equivalent (as shortest modes are assumed). However, for
+    the second pass/context-unaware assignment it allows us to be more
+    precise with our calculations. This same approach is used in the GRPW
+    heuristic.
+
+    In this heuristic, a higher value corresponds to higher priority,
+    therefore we have to negate the values to fit the lower-is-better
+    convention."""
+    @staticmethod
+    def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:
+        all_successors = PriorityRule._compute_successors_recursive(project)
+
+        durations = project.durations_given_modes(mode_assignments)
+
+        return [
+            -(durations[i] + sum(durations[s] for s in all_successors[i]))
+            for i in range(project.num_activities)
         ]
 
 # ---------------------------------------------------------------------------
