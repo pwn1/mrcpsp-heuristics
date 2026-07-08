@@ -10,7 +10,7 @@ import multiprocessing
 
 from mm_parser import parse_psplib
 from schedule_generation_schemes import SGS_SCHEMES
-from priority_rules import PRIORITY_RULES, get_priority_fn
+from priority_rules import PRIORITY_RULES
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
 from validation import ScheduleValidator
 from justification import justify
@@ -29,7 +29,7 @@ LS_SEED = 42
 def _run_combo(project, sgs_name, pr_name, mr_name):
     """Build and run one heuristic combination. Applies JUSTIFY if set.
     Returns the resulting Schedule, or None if infeasible."""
-    pr_fn = get_priority_fn(pr_name, project, sgs_name, mr_name)
+    pr_fn = PRIORITY_RULES[pr_name]
     mr_fn = get_mode_fn(mr_name, project, sgs_name, pr_name)
     is_ca = mr_name in CONTEXT_AWARE_RULES
     schedule = SGS_SCHEMES[sgs_name](project, pr_fn, mr_fn,

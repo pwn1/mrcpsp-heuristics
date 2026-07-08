@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 from mrcpsp import Project
+from priority_rules import PriorityHeuristic
 from schedule_generation_schemes.ScheduleGeneratorFactory import ScheduleGeneratorFactory
 
 """Schedule Generation Schemes for multi-mode RCPSP.
@@ -30,7 +31,7 @@ References:
 
 def serial_sgs(
         project: Project,
-        priority_fn: Callable,
+        priority_heuristic: PriorityHeuristic,
         mode_fn: Callable,
         mode_is_context_aware: bool = False
 ):
@@ -40,7 +41,7 @@ def serial_sgs(
     second pass re-schedules)."""
     schedule_generator = ScheduleGeneratorFactory.create(
         parallel=False,
-        priority_fn=priority_fn,
+        priority_heuristic=priority_heuristic,
         mode_fn=mode_fn,
         mode_is_context_aware=mode_is_context_aware
     )
@@ -49,7 +50,7 @@ def serial_sgs(
 
 def parallel_sgs(
         project: Project,
-        priority_fn: Callable,
+        priority_heuristic: PriorityHeuristic,
         mode_fn: Callable,
         mode_is_context_aware: bool = False
 ):
@@ -58,7 +59,7 @@ def parallel_sgs(
     context-aware mode rules (same as serial_sgs)."""
     schedule_generator = ScheduleGeneratorFactory.create(
         parallel=True,
-        priority_fn=priority_fn,
+        priority_heuristic=priority_heuristic,
         mode_fn=mode_fn,
         mode_is_context_aware=mode_is_context_aware
     )

@@ -7,8 +7,8 @@ import sys
 import time
 
 from mm_parser import parse_psplib
-from sgs import SGS_SCHEMES
-from priority_rules import PRIORITY_RULES, get_priority_fn
+from schedule_generation_schemes import SGS_SCHEMES
+from priority_rules import PRIORITY_RULES
 from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
 
 
@@ -54,7 +54,7 @@ def run_benchmark(directory, max_instances=None):
         for sgs_name, sgs_fn in SGS_SCHEMES.items():
             for pr_name in PRIORITY_RULES:
                 for mr_name in MODE_RULES:
-                    pr_fn = get_priority_fn(pr_name, project, sgs_name, mr_name)
+                    pr_fn = PRIORITY_RULES[pr_name]
                     mr_fn = get_mode_fn(mr_name, project, sgs_name, pr_name)
                     is_ca = mr_name in CONTEXT_AWARE_RULES
                     schedule = sgs_fn(project, pr_fn, mr_fn,
