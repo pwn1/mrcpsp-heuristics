@@ -1,5 +1,11 @@
 from default_mrcpsp_resources import PROJECT
-from priority_rules.heuristics import AN, GRD, GRPW, LFT, LST, LSTLFT, MSLK, MTS, NIS, RWK, SPT, WRUP
+from priority_rules.heuristics import (
+    AN, GRD, GRPW, LFT, LST,
+    LSTLFT, MSLK, MTS, NIS,
+    RWK, SPT, WRUP, EFT, EST,
+    FREE, LPT
+)
+
 
 class TestPriorityRules:
     def test_lft(self):
@@ -68,4 +74,24 @@ class TestPriorityRules:
     def test_an(self):
         expected_priorities = [0,1,2,3,4]
         actual_priorities = AN.prioritise(PROJECT,[0,0,0,0,0])
+        assert actual_priorities == expected_priorities
+
+    def test_eft(self):
+        expected_priorities = [0,1,2,2,2]
+        actual_priorities = EFT.prioritise(PROJECT,[0,0,0,0,0])
+        assert actual_priorities == expected_priorities
+
+    def test_est(self):
+        expected_priorities = [0,0,1,1,2]
+        actual_priorities = EST.prioritise(PROJECT,[0,0,0,0,0])
+        assert actual_priorities == expected_priorities
+
+    def test_free(self):
+        expected_priorities = [0,0,1,0,0]
+        actual_priorities = FREE.prioritise(PROJECT,[0,0,0,1,0])
+        assert actual_priorities == expected_priorities
+
+    def test_lpt(self):
+        expected_priorities = [0,-1,-2,-1,0]
+        actual_priorities = LPT.prioritise(PROJECT,[0,0,2,0,0])
         assert actual_priorities == expected_priorities

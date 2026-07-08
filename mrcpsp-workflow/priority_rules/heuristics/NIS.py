@@ -8,7 +8,7 @@ class NIS(PriorityHeuristic):
     """
     @staticmethod
     def get_name() -> str:
-        return "MIS"
+        return "NIS"
 
     @staticmethod
     def prioritise(project: Project, mode_assignments: list[int]) -> list[int]:

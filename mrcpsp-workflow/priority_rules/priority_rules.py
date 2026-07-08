@@ -61,7 +61,7 @@ class CompositeRule(PriorityHeuristic):
 # Build the full registry
 # ---------------------------------------------------------------------------
 
-HEURISTIC_LIST = [AN, GRD, GRPW, LFT, LST, LSTLFT, MSLK, MTS, NIS, RWK, SPT, WRUP]
+HEURISTIC_LIST = [AN, EFT, EST, FREE, GRD, GRPW, LFT, LPT, LST, LSTLFT, MSLK, MTS, NIS, RWK, SPT, WRUP]
 
 PRIORITY_RULES = {}
 for p in HEURISTIC_LIST:
