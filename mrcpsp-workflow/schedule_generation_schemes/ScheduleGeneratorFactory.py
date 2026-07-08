@@ -1,5 +1,6 @@
 from typing import Callable
 
+from priority_rules import PriorityHeuristic
 from schedule_generation_schemes.InitialModeAssigner import ContextAwareModeAssigner, \
     ContextUnAwareModeAssigner
 from schedule_generation_schemes.ScheduleGenerator import ScheduleGenerator
@@ -10,7 +11,7 @@ class ScheduleGeneratorFactory:
     @staticmethod
     def create(
             parallel: bool,
-            priority_fn: Callable,
+            priority_heuristic: PriorityHeuristic,
             mode_fn: Callable,
             mode_is_context_aware: bool
     ) -> ScheduleGenerator:
@@ -18,4 +19,4 @@ class ScheduleGeneratorFactory:
 
         initial_mode_assigner = ContextAwareModeAssigner() if mode_is_context_aware else ContextUnAwareModeAssigner()
 
-        return ScheduleGenerator(core_scheduler, priority_fn, mode_fn, initial_mode_assigner)
+        return ScheduleGenerator(core_scheduler, priority_heuristic, mode_fn, initial_mode_assigner)

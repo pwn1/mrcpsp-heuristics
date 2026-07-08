@@ -33,7 +33,6 @@ References:
    vol. 40, no. 12, pp. 1145–1152, 1989.
 """
 
-import random
 from mrcpsp import Project
 
 # ---------------------------------------------------------------------------
@@ -58,27 +57,15 @@ class CompositeRule(PriorityHeuristic):
             self._tiebreak_heuristic.prioritise(project, mode_assignments)
         ))
 
-    def return_composite_func(self):
-        def composite(project: Project, mode_assignments: list[int]) -> list:
-            return list(zip(
-                self._primary_heuristic.prioritise(project,mode_assignments),
-                self._tiebreak_heuristic.prioritise(project,mode_assignments)
-            ))
-        return composite
-
-
 # ---------------------------------------------------------------------------
 # Build the full registry
 # ---------------------------------------------------------------------------
 
 HEURISTIC_LIST = [AN, GRD, GRPW, LFT, LST, LSTLFT, MSLK, MTS, NIS, RWK, SPT, WRUP]
 
-# ---------------------------------------------------------------------------
-# Random priority rule (placeholder + seeded factory)
-# ---------------------------------------------------------------------------
 PRIORITY_RULES = {}
 for p in HEURISTIC_LIST:
     for t in HEURISTIC_LIST:
         if p==t:
             continue
-        PRIORITY_RULES[f'{p.get_name()}/{t.get_name()}'] = CompositeRule(p,t).return_composite_func()
+        PRIORITY_RULES[f'{p.get_name()}/{t.get_name()}'] = CompositeRule(p,t)

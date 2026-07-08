@@ -1,6 +1,7 @@
 from typing import Callable
 
 from mrcpsp import Project, Schedule
+from priority_rules import PriorityHeuristic
 from schedule_generation_schemes.InitialModeAssigner import InitialModeAssigner
 from schedule_generation_schemes.NonRenewableRepair import NonRenewableRepair
 from schedule_generation_schemes.schedulers import Scheduler
@@ -10,12 +11,12 @@ class ScheduleGenerator:
     def __init__(
             self,
             core_scheduler: Scheduler,
-            priority_fn: Callable,
+            priority_heuristic: PriorityHeuristic,
             mode_fn: Callable,
             initial_mode_assigner: InitialModeAssigner
     ):
         self.core_scheduler = core_scheduler
-        self.priority_fn = priority_fn
+        self.priority_heuristic = priority_heuristic
         self.mode_fn = mode_fn
         self.initial_mode_assigner = initial_mode_assigner
 
@@ -41,7 +42,7 @@ class ScheduleGenerator:
         mode_assignments = (
             self
             .initial_mode_assigner
-            .assign_modes(project, self.priority_fn, self.mode_fn, self.core_scheduler)
+            .assign_modes(project, self.priority_heuristic, self.mode_fn, self.core_scheduler)
         )
 
         mode_assignments = NonRenewableRepair().repair_nonrenewable(project, mode_assignments)
@@ -49,5 +50,5 @@ class ScheduleGenerator:
         # If the repair fails, we must exit early
         if mode_assignments is None: return None
 
-        priorities = self.priority_fn(project=project, mode_assignments=mode_assignments)
+        priorities = self.priority_heuristic.prioritise(project=project, mode_assignments=mode_assignments)
         return self.core_scheduler.fixed_mode_pass(project, priorities, mode_assignments)
