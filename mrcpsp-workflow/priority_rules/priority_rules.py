@@ -5,10 +5,11 @@ from .priority_heuristic_abc import PriorityHeuristic
 
 """Priority rules for activity ordering in schedule generation schemes.
 
-Priority rules surveyed in:
-  - Hartmann & Kolisch (2000), Kolisch & Hartmann (2006)
-  - Lova, Tormos & Barber (2006) for MRCPSP specifically
-  - Melchiors, Kolisch & Kanet (2024)
+Priority rules were chosen by implementing all the priority rules tabulated in 
+Lova, Tormos & Barber (2006) and Kolisch (1996). Some modifications were made to
+these rules when necessary, such as writing them in static form (to limit 
+complexity) and using the provided mode assignments (instead of always using
+the shortest duration mode).
 
 Each base rule returns a list of numeric values (lower = higher priority).
 Composite rules pair a primary rule with a tie-breaker, returning tuples.
