@@ -9,7 +9,7 @@ import time
 from mm_parser import parse_psplib
 from schedule_generation_schemes import SGS_SCHEMES
 from priority_rules import PRIORITY_RULES
-from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES, get_mode_fn
+from mode_rules import MODE_RULES, CONTEXT_AWARE_RULES
 
 
 def load_best_known(path="data/mmlib50_best_known.csv"):
@@ -55,7 +55,7 @@ def run_benchmark(directory, max_instances=None):
             for pr_name in PRIORITY_RULES:
                 for mr_name in MODE_RULES:
                     pr_fn = PRIORITY_RULES[pr_name]
-                    mr_fn = get_mode_fn(mr_name, project, sgs_name, pr_name)
+                    mr_fn = MODE_RULES[mr_name]
                     is_ca = mr_name in CONTEXT_AWARE_RULES
                     schedule = sgs_fn(project, pr_fn, mr_fn,
                                       mode_is_context_aware=is_ca)

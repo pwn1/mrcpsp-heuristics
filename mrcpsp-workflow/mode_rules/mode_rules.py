@@ -13,10 +13,6 @@ References:
   - Van Peteghem & Vanhoucke (2011): resource scarceness characteristics
 """
 
-# Todo: Move LRTU and INDEX into the regular mode rules
-
-import hashlib
-import random
 from mrcpsp import Project, Activity
 from schedule_generation_schemes.helpers import find_earliest_feasible_start
 
@@ -124,7 +120,7 @@ def _index_scores(activity: Activity, **_) -> list:
 # Base rule registry
 # ---------------------------------------------------------------------------
 
-_CONTEXT_FREE_BASE = {"shortest_duration", "longest_duration", "min_resource"}
+_CONTEXT_FREE_BASE = {"shortest_duration", "longest_duration", "min_resource","LTRU","INDEX"}
 _CONTEXT_AWARE_BASE = {"earliest_start", "earliest_finish", "resource_fitting"}
 
 _BASE_MODE_RULES = {
@@ -143,6 +139,8 @@ _BASE_MODE_RULES = {
 # Composite rule builder
 # ---------------------------------------------------------------------------
 
+# TODO: the composite rule returns the min value. Therefore, we don't need to
+#  calculate the tiebreak unless we need to (because the primary hasn't given us our answer).
 def make_composite_mode_rule(primary_name: str, tiebreak_name: str):
     """Build a mode selection function that uses primary_name as the main rule
     and tiebreak_name to break ties. Selects the mode with the lowest
@@ -163,9 +161,9 @@ def make_composite_mode_rule(primary_name: str, tiebreak_name: str):
 # ---------------------------------------------------------------------------
 
 _PRIMARY_NAMES = ["shortest_duration", "longest_duration", "min_resource",
-                  "earliest_start", "earliest_finish", "resource_fitting"]
+                  "earliest_start", "earliest_finish", "resource_fitting","LTRU","INDEX"]
 _TIEBREAK_NAMES = ["shortest_duration", "longest_duration", "min_resource",
-                   "earliest_start", "earliest_finish", "resource_fitting"]
+                   "earliest_start", "earliest_finish", "resource_fitting","LTRU","INDEX"]
 
 CONTEXT_FREE_RULES = {}
 CONTEXT_AWARE_RULES = {}
@@ -184,58 +182,4 @@ for p in _PRIMARY_NAMES:
         else:
             CONTEXT_FREE_RULES[name] = rule_fn
 
-# Random mode placeholder — the actual function is created per-combo by
-# make_random_mode() with a local, seeded RNG.  This placeholder is kept in
-# the registry so that iteration over MODE_RULES still includes "random".
-def _random_mode_placeholder(activity: Activity, **_) -> int:
-    """Placeholder — should not be called directly; use get_mode_fn()."""
-    raise RuntimeError(
-        "random_mode called without seeding; use get_mode_fn() to obtain "
-        "a properly seeded random mode function"
-    )
-
-# LTRU as a standalone context-free rule (ties broken by mode index, consistent
-# with how B&K 2007 present it — no explicit tie-breaker paired with LTRU).
-CONTEXT_FREE_RULES["LTRU"] = make_composite_mode_rule("LTRU", "INDEX")
-
-for _name in ("random", "random2", "random3", "random4"):
-    CONTEXT_FREE_RULES[_name] = _random_mode_placeholder
-
 MODE_RULES = {**CONTEXT_FREE_RULES, **CONTEXT_AWARE_RULES}
-
-
-# ---------------------------------------------------------------------------
-# Seeded random mode factory
-# ---------------------------------------------------------------------------
-
-def combo_seed(project_seed: int, sgs_name: str, pr_name: str, mr_name: str) -> int:
-    """Deterministic seed from instance data and heuristic combination name.
-
-    Uses SHA-256 rather than hash() because hash() on strings is salted by
-    PYTHONHASHSEED and varies across processes.
-    """
-    key = f"{project_seed}:{sgs_name}:{pr_name}:{mr_name}"
-    return int(hashlib.sha256(key.encode()).hexdigest(), 16) & 0xFFFFFFFF
-
-
-def make_random_mode(seed: int):
-    """Create a random mode selector with a local, deterministically seeded RNG."""
-    rng = random.Random(seed)
-
-    def _random_mode(activity: Activity, **_) -> int:
-        return rng.randint(0, len(activity.modes) - 1)
-
-    return _random_mode
-
-
-def get_mode_fn(mr_name: str, project, sgs_name: str, pr_name: str):
-    """Get a mode selection function for the given combo.
-
-    For stochastic rules (currently only 'random'), returns a closure with a
-    local RNG seeded from both the instance data and the full heuristic
-    combination name.  Deterministic rules are returned as-is.
-    """
-    if mr_name.startswith("random"):
-        seed = combo_seed(project.seed(), sgs_name, pr_name, mr_name)
-        return make_random_mode(seed)
-    return MODE_RULES[mr_name]
