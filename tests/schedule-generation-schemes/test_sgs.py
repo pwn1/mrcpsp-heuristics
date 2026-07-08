@@ -1,10 +1,10 @@
 from mode_rules import get_mode_fn
-from priority_rules import get_priority_fn, PRIORITY_RULES
+from priority_rules import PRIORITY_RULES
 from schedule_generation_schemes import *
 
 from default_mrcpsp_resources import *
 
-PRIORITY_RULE = get_priority_fn("LFT/LST",PROJECT,"","")
+PRIORITY_RULE = PRIORITY_RULES["LFT/LST"]
 NON_CONTEXT_AWARE_MODE_RULE = get_mode_fn("shortest_duration/longest_duration",PROJECT,"","")
 CONTEXT_AWARE_MODE_RULE = get_mode_fn("earliest_start/earliest_finish",PROJECT,"","")
 

@@ -40,7 +40,7 @@ from mrcpsp import Project
 # Composite rule builder
 # ---------------------------------------------------------------------------
 
-class CompositeRule:
+class CompositeRule(PriorityHeuristic):
     def __init__(
             self,
             primary_heuristic:PriorityHeuristic,
@@ -48,6 +48,15 @@ class CompositeRule:
     ):
         self._primary_heuristic = primary_heuristic
         self._tiebreak_heuristic = tiebreak_heuristic
+
+    def get_name(self) -> str:
+        return f"{self._primary_heuristic.get_name()}/{self._tiebreak_heuristic.get_name()}"
+
+    def prioritise(self, project: Project, mode_assignments: list[int]) -> list[int]:
+        return list(zip(
+            self._primary_heuristic.prioritise(project, mode_assignments),
+            self._tiebreak_heuristic.prioritise(project, mode_assignments)
+        ))
 
     def return_composite_func(self):
         def composite(project: Project, mode_assignments: list[int]) -> list:
@@ -73,28 +82,3 @@ for p in HEURISTIC_LIST:
         if p==t:
             continue
         PRIORITY_RULES[f'{p.get_name()}/{t.get_name()}'] = CompositeRule(p,t).return_composite_func()
-
-def make_random_priority(seed: int):
-    """Create a random priority function with a local, deterministically seeded RNG.
-
-    Returns one random float per activity on each call; lower = higher priority.
-    """
-    rng = random.Random(seed)
-
-    def _random_priority(project: Project, **_) -> list:
-        return [rng.random() for _ in range(project.num_activities)]
-
-    return _random_priority
-
-def get_priority_fn(pr_name: str, project, sgs_name: str, mr_name: str):
-    """Get a priority function for the given combo.
-
-    For stochastic rules (currently only 'random'), returns a closure with a
-    local RNG seeded from both the instance data and the full heuristic
-    combination name. Deterministic rules are returned as-is.
-    """
-    if pr_name.startswith("random"):
-        from mode_rules import combo_seed
-        seed = combo_seed(project.seed(), sgs_name, pr_name, mr_name)
-        return make_random_priority(seed)
-    return PRIORITY_RULES[pr_name]
