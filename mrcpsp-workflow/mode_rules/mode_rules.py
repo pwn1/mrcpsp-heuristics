@@ -13,6 +13,8 @@ References:
   - Van Peteghem & Vanhoucke (2011): resource scarceness characteristics
 """
 
+# Todo: Move LRTU and INDEX into the regular mode rules
+
 import hashlib
 import random
 from mrcpsp import Project, Activity
