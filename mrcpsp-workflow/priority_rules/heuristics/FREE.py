@@ -21,7 +21,9 @@ class FREE(PriorityHeuristic):
             successor_indexes = project.activities[activity_index].successors
             earliest_successor_est = min(
                 [cpm.earliest_start_time[i]
-                for i in successor_indexes] or [cpm.earliest_finish_time[activity_index]]
+                for i in successor_indexes]
+                # We implement this dummy value for the sink task
+                or [cpm.earliest_finish_time[activity_index]]
             )
             priorities.append(earliest_successor_est-cpm.earliest_finish_time[activity_index])
 
