@@ -11,6 +11,13 @@ tie-breaker, producing (primary, tiebreak) tuples for lexicographic selection.
 References:
   - Lova, Tormos & Barber (2006): systematic study of mode selection rules
   - Van Peteghem & Vanhoucke (2011): resource scarceness characteristics
+  
+  
+  
+Where modes are taken from:
+Boctor 1993 (for LCR, and LRP. We use an extension of SFM called EFFT from 
+Lova, Tormos & Barber to allow for a serial interpretation as well as a parallel one)
+Lova, Tormos & Barber (2006) (for EFFT -> which has been split up into EFFT and longest_duration as the tiebreaker)
 """
 
 from mrcpsp import Project, Activity
@@ -28,7 +35,7 @@ def _shortest_duration_scores(activity: Activity, **_) -> list:
     idea to Boctor (1993)."""
     return [mode.duration for mode in activity.modes]
 
-
+# TODO: This should be LRP
 def _min_resource_scores(activity: Activity, **_) -> list:
     """Score = total renewable demand Σ_r k_{j,r,m} (lower = better).
     Standard context-free mode score; related to — but simpler than —
